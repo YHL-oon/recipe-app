@@ -1,0 +1,1032 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<title>오늘 뭐 해먹지? - 초보자 레시피 추천</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: 'Pretendard', -apple-system, 'Apple SD Gothic Neo', '맑은 고딕', sans-serif;
+    background: #fff8f0;
+    min-height: 100vh;
+    padding: 40px 20px;
+    color: #3a3a3a;
+    line-height: 1.6;
+  }
+  .container { max-width: 860px; margin: 0 auto; }
+  header { text-align: center; margin-bottom: 36px; }
+  h1 {
+    font-size: 2.1em;
+    color: #e87c5a;
+    font-weight: 700;
+    margin-bottom: 8px;
+    letter-spacing: -0.5px;
+  }
+  .subtitle { color: #999; font-size: 1em; }
+
+  .card {
+    background: #ffffff;
+    border-radius: 16px;
+    padding: 28px;
+    margin-bottom: 20px;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.04);
+  }
+  .card h2 {
+    font-size: 1.15em;
+    color: #4a4a4a;
+    margin-bottom: 18px;
+    font-weight: 600;
+  }
+
+  .category-tabs {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin-bottom: 20px;
+  }
+  .tab {
+    padding: 8px 14px;
+    background: #fdf3ec;
+    border: 1.5px solid transparent;
+    border-radius: 22px;
+    cursor: pointer;
+    font-size: 0.92em;
+    color: #8a7060;
+    transition: all 0.15s;
+    font-family: inherit;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .tab:hover { background: #fae5d6; }
+  .tab.active {
+    background: #e87c5a;
+    color: white;
+    border-color: #e87c5a;
+  }
+
+  .ingredient-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
+    gap: 10px;
+    margin-bottom: 22px;
+  }
+  .ingredient-item {
+    background: #fdf8f3;
+    border: 1.5px solid #f0e3d4;
+    border-radius: 12px;
+    padding: 14px 8px 10px;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.15s;
+    user-select: none;
+    font-size: 0.92em;
+    color: #5a5a5a;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+  }
+  .ingredient-item:hover {
+    border-color: #e87c5a;
+    background: #fff5ed;
+    transform: translateY(-2px);
+  }
+  .ingredient-item.selected {
+    background: #ffe7d6;
+    border-color: #e87c5a;
+    color: #b04a2a;
+    font-weight: 600;
+  }
+  .ingredient-icon { font-size: 1.6em; line-height: 1; }
+
+  .custom-input {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 22px;
+  }
+  .custom-input input {
+    flex: 1;
+    padding: 11px 16px;
+    border: 1.5px solid #f0e3d4;
+    border-radius: 10px;
+    font-size: 0.95em;
+    outline: none;
+    font-family: inherit;
+    background: #fdf8f3;
+    color: #3a3a3a;
+  }
+  .custom-input input:focus {
+    border-color: #e87c5a;
+    background: #fff;
+  }
+
+  .btn {
+    padding: 11px 20px;
+    background: #e87c5a;
+    color: white;
+    border: none;
+    border-radius: 10px;
+    font-size: 0.95em;
+    cursor: pointer;
+    font-weight: 600;
+    transition: background 0.15s;
+    font-family: inherit;
+  }
+  .btn:hover { background: #d96a48; }
+  .btn-big {
+    display: block;
+    width: 100%;
+    padding: 16px;
+    font-size: 1.08em;
+    font-weight: 700;
+    margin-bottom: 28px;
+    box-shadow: 0 4px 14px rgba(232, 124, 90, 0.25);
+  }
+
+  .selected-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 12px;
+  }
+  .selected-count { font-size: 0.9em; color: #888; font-weight: 500; }
+  .clear-btn {
+    padding: 6px 12px;
+    font-size: 0.85em;
+    background: transparent;
+    border: 1px solid #d4cabd;
+    color: #8a7e6e;
+    border-radius: 8px;
+    cursor: pointer;
+    font-family: inherit;
+    transition: all 0.15s;
+  }
+  .clear-btn:hover { background: #faf0e6; border-color: #b89a82; }
+  .clear-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+  .selected-list {
+    background: #fdf8f3;
+    border: 1.5px dashed #d4c4b3;
+    border-radius: 12px;
+    padding: 14px;
+    min-height: 64px;
+  }
+  .selected-tag {
+    display: inline-flex;
+    align-items: center;
+    background: #fff;
+    color: #5a4a3a;
+    padding: 6px 8px 6px 12px;
+    border: 1px solid #f0e0d0;
+    border-radius: 20px;
+    margin: 4px;
+    font-size: 0.92em;
+    gap: 4px;
+  }
+  .selected-tag .tag-icon { font-size: 1.1em; }
+  .selected-tag .remove {
+    margin-left: 6px;
+    width: 20px;
+    height: 20px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: #f0e3d4;
+    color: #8a7060;
+    border-radius: 50%;
+    cursor: pointer;
+    font-size: 0.85em;
+    transition: all 0.15s;
+  }
+  .selected-tag .remove:hover { background: #e87c5a; color: white; }
+  .empty-message { color: #c0b3a3; text-align: center; padding: 14px; font-size: 0.95em; }
+
+  /* 레시피 카드 */
+  .recipe-card {
+    background: #fff;
+    border: 1.5px solid #f0e3d4;
+    border-radius: 16px;
+    margin-bottom: 20px;
+    overflow: hidden;
+    transition: all 0.2s;
+  }
+  .recipe-card:hover {
+    border-color: #e87c5a;
+    transform: translateY(-2px);
+    box-shadow: 0 6px 18px rgba(232, 124, 90, 0.12);
+  }
+
+  .recipe-hero {
+    height: 140px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 76px;
+    position: relative;
+    overflow: hidden;
+  }
+  .recipe-hero::after {
+    content: '';
+    position: absolute;
+    bottom: 0; left: 0; right: 0;
+    height: 30px;
+    background: linear-gradient(to bottom, transparent, rgba(255,255,255,0.4));
+  }
+  .hero-1 { background: linear-gradient(135deg, #ffe4cc 0%, #ffcca8 100%); }
+  .hero-2 { background: linear-gradient(135deg, #ffe7e3 0%, #ffc4ba 100%); }
+  .hero-3 { background: linear-gradient(135deg, #fff4d6 0%, #ffe093 100%); }
+  .hero-4 { background: linear-gradient(135deg, #ffdcd0 0%, #ff9d80 100%); }
+  .hero-5 { background: linear-gradient(135deg, #ffe5b4 0%, #ffb874 100%); }
+  .hero-6 { background: linear-gradient(135deg, #fff0d4 0%, #ffd58a 100%); }
+  .hero-7 { background: linear-gradient(135deg, #fff5cc 0%, #ffe17a 100%); }
+  .hero-8 { background: linear-gradient(135deg, #e8d5b8 0%, #c49b6a 100%); }
+  .hero-9 { background: linear-gradient(135deg, #e6f0d4 0%, #b9d68f 100%); }
+  .hero-10 { background: linear-gradient(135deg, #ffe9c5 0%, #ffc274 100%); }
+  .hero-11 { background: linear-gradient(135deg, #ffe1d0 0%, #ffaa84 100%); }
+  .hero-12 { background: linear-gradient(135deg, #d4ebd4 0%, #94c594 100%); }
+  .hero-13 { background: linear-gradient(135deg, #fde8d3 0%, #f5b890 100%); }
+  .hero-14 { background: linear-gradient(135deg, #f5e8d8 0%, #e0c8a0 100%); }
+
+  .recipe-body { padding: 24px; }
+
+  .recipe-title {
+    font-size: 1.3em;
+    color: #2a2a2a;
+    margin-bottom: 10px;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .recipe-meta {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 14px;
+    flex-wrap: wrap;
+    align-items: center;
+  }
+  .meta-tag {
+    padding: 5px 11px;
+    border-radius: 7px;
+    font-size: 0.83em;
+    font-weight: 500;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+  }
+  .meta-tag.time { background: #e8eef5; color: #4a6890; }
+  .meta-tag.match { background: #fde0d4; color: #b04a2a; font-weight: 600; }
+  .meta-tag.portion { background: #f0e8db; color: #6a5e4e; }
+  .meta-tag.stars {
+    background: #fff5dc;
+    color: #d4a017;
+    font-weight: 700;
+    letter-spacing: 1px;
+  }
+  .star-empty { color: #e8d8a0; }
+  .difficulty-label {
+    font-size: 0.83em;
+    color: #888;
+    margin-right: 2px;
+  }
+
+  .match-bar {
+    background: #f5ebe0;
+    border-radius: 4px;
+    height: 6px;
+    overflow: hidden;
+    margin: 10px 0;
+  }
+  .match-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #e87c5a, #f4b942);
+    border-radius: 4px;
+    transition: width 0.5s;
+  }
+  .ingredient-status { font-size: 0.9em; color: #7a7068; margin: 8px 0; }
+  .missing { color: #d97b4a; }
+  .all-have { color: #6a9050; font-weight: 500; }
+
+  .recipe-section { margin: 20px 0 8px; }
+  .recipe-section .label {
+    color: #5a5040;
+    font-size: 0.88em;
+    font-weight: 700;
+    margin-bottom: 10px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .recipe-section .label::before {
+    content: '';
+    width: 4px;
+    height: 14px;
+    background: #e87c5a;
+    border-radius: 2px;
+  }
+  .recipe-section ol, .recipe-section ul {
+    margin-left: 22px;
+    line-height: 1.85;
+    color: #3a3a3a;
+  }
+  .recipe-section ol li, .recipe-section ul li {
+    padding-left: 6px;
+    margin-bottom: 6px;
+  }
+
+  .ingredients-table {
+    background: #fdf8f3;
+    border-radius: 10px;
+    padding: 14px 18px;
+    border: 1px solid #f0e3d4;
+  }
+  .ing-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 6px 0;
+    border-bottom: 1px dashed #f0e3d4;
+    font-size: 0.93em;
+  }
+  .ing-row:last-child { border-bottom: none; }
+  .ing-name { color: #4a4a4a; display: flex; align-items: center; gap: 6px; }
+  .ing-amount { color: #8a7e6e; font-weight: 500; }
+
+  .tip {
+    background: #fffaeb;
+    border-left: 3px solid #f4b942;
+    padding: 12px 16px;
+    border-radius: 6px;
+    margin-top: 14px;
+    font-size: 0.93em;
+    color: #5a5040;
+    line-height: 1.7;
+  }
+  .tip strong { color: #b8881a; }
+  .caution {
+    background: #fdecec;
+    border-left: 3px solid #d96a6a;
+    padding: 12px 16px;
+    border-radius: 6px;
+    margin-top: 10px;
+    font-size: 0.93em;
+    color: #6b4040;
+    line-height: 1.7;
+  }
+  .caution strong { color: #b03a3a; }
+
+  .empty {
+    text-align: center;
+    color: #b8ada0;
+    padding: 50px 20px;
+    font-size: 0.98em;
+  }
+  .empty small { display: block; margin-top: 8px; font-size: 0.88em; color: #c8bfb2; }
+</style>
+</head>
+<body>
+<div class="container">
+  <header>
+    <h1>🍽 오늘 뭐 해먹지?</h1>
+    <p class="subtitle">냉장고 속 재료로 만드는 초보자 맞춤 레시피</p>
+  </header>
+
+  <div class="card">
+    <h2>1. 갖고 있는 재료를 골라주세요</h2>
+    <div class="category-tabs" id="tabs"></div>
+    <div class="ingredient-grid" id="ingredients"></div>
+
+    <div class="custom-input">
+      <input type="text" id="customIngredient" placeholder="목록에 없는 재료를 직접 입력하세요" />
+      <button class="btn" onclick="addCustom()">추가</button>
+    </div>
+
+    <div class="selected-header">
+      <span class="selected-count" id="selectedCount">선택된 재료 0개</span>
+      <button class="clear-btn" id="clearBtn" onclick="clearAll()" disabled>전체 지우기</button>
+    </div>
+    <div class="selected-list" id="selectedList">
+      <div class="empty-message">아직 선택된 재료가 없습니다</div>
+    </div>
+  </div>
+
+  <button class="btn btn-big" onclick="findRecipes()">레시피 추천받기</button>
+
+  <div class="card">
+    <h2>2. 추천 레시피</h2>
+    <div id="recipes">
+      <div class="empty">
+        재료를 선택하고 추천받기 버튼을 눌러주세요
+        <small>가지고 있는 재료가 많을수록 더 정확한 추천을 받을 수 있어요</small>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// 재료별 아이콘 매핑
+const icons = {
+  '달걀': '🥚', '돼지고기': '🥩', '소고기': '🥩', '닭고기': '🍗',
+  '베이컨': '🥓', '햄': '🍖', '소시지': '🌭', '참치캔': '🐟',
+  '양파': '🧅', '대파': '🌿', '마늘': '🧄', '감자': '🥔',
+  '당근': '🥕', '애호박': '🥒', '양배추': '🥬', '김치': '🌶️',
+  '버섯': '🍄', '오이': '🥒', '토마토': '🍅', '시금치': '🥬',
+  '깻잎': '🌿', '두부': '⬜',
+  '밥': '🍚', '라면': '🍜', '스파게티면': '🍝', '식빵': '🍞',
+  '떡': '🍡', '만두': '🥟', '우동면': '🍲',
+  '우유': '🥛', '치즈': '🧀', '버터': '🧈', '생크림': '🍦', '플레인요거트': '🥣',
+  '간장': '🥫', '고추장': '🌶️', '된장': '🥫', '설탕': '🍬',
+  '소금': '🧂', '후추': '🌑', '식용유': '🫗', '참기름': '🫗',
+  '고춧가루': '🌶️', '마요네즈': '🥫', '케첩': '🍅', '굴소스': '🥫',
+  '식초': '🧴', '꿀': '🍯', '김치국물': '🌶️', '다진마늘': '🧄',
+  '올리브유': '🫒', '밀가루': '🌾', '부침가루': '🌾', '통깨': '🌰',
+  '우유 또는 물': '🥛', '슬라이스 치즈 또는 파마산 치즈': '🧀',
+  '치즈가루 (선택)': '🧀', '버터 또는 식용유': '🧈',
+  '햄 또는 소시지': '🍖', '토마토 또는 케첩': '🍅',
+  '버터 (선택)': '🧈', '치즈 (선택)': '🧀', '대파 (선택)': '🌿',
+  '양파 (선택)': '🧅', '당근 (선택)': '🥕', '햄 (선택)': '🍖',
+  '버섯 (선택)': '🍄', '돼지고기 (선택)': '🥩', '달걀 (선택)': '🥚',
+  '참기름 (선택)': '🫗', '치즈': '🧀', '마요네즈': '🥫',
+  '후추 (선택)': '🌑', '소금/후추': '🧂', '소금': '🧂',
+  '고추장 (선택)': '🌶️', '꿀 (선택)': '🍯', '시나몬 (선택)': '🌰',
+  '밀가루 또는 부침가루 (선택)': '🌾', '통깨 (선택)': '🌰',
+  '슈레드치즈': '🧀', '청양고추': '🌶️'
+};
+
+function getIcon(name) {
+  if (icons[name]) return icons[name];
+  // 부분 매칭
+  for (const key of Object.keys(icons)) {
+    if (name.includes(key)) return icons[key];
+  }
+  return '🥄';
+}
+
+const ingredientCategories = {
+  '🥩 육류·달걀': ['달걀', '돼지고기', '소고기', '닭고기', '베이컨', '햄', '소시지', '참치캔'],
+  '🥬 채소': ['양파', '대파', '마늘', '감자', '당근', '애호박', '양배추', '김치', '버섯', '오이', '토마토', '시금치', '깻잎', '두부'],
+  '🍚 밥·면·빵': ['밥', '라면', '스파게티면', '식빵', '떡', '만두', '우동면'],
+  '🥛 유제품': ['우유', '치즈', '버터', '생크림', '플레인요거트'],
+  '🧂 양념·기타': ['간장', '고추장', '된장', '설탕', '소금', '후추', '식용유', '참기름', '고춧가루', '마요네즈', '케첩', '굴소스']
+};
+
+// 분량 표시 기준: 1숟갈 = 밥숟가락 1개 (약 15ml)
+// 불 세기: 약불(가스 1-2단), 중불(3단), 센불(4-5단)
+// difficulty: 1 (쉬움) ~ 3 (어려움), heroEmoji: 완성 요리 이모지
+const recipes = [
+  {
+    name: '간단 계란후라이 덮밥', diff: 1, time: '10분', portions: '1인분',
+    heroEmoji: '🍳', heroClass: 'hero-1',
+    need: ['달걀', '밥', '간장'], optional: ['참기름', '대파', '버터'],
+    ingredients: [
+      ['달걀', '2개'], ['밥', '1공기 (약 200g)'], ['간장', '1숟갈'],
+      ['식용유', '1숟갈'], ['참기름 (선택)', '몇 방울'], ['대파 (선택)', '5cm 정도']
+    ],
+    prep: [
+      '대파가 있다면 송송 썰어 둡니다 (대파를 옆으로 눕히고 칼로 얇게 자르면 동그란 모양이 나와요)',
+      '밥은 미리 전자레인지에 1분 30초 정도 데워두면 좋아요'
+    ],
+    steps: [
+      '팬을 중불에 30초~1분 정도 달궈주세요 (손을 팬 위 10cm에 대봤을 때 따뜻한 기운이 느껴지면 OK)',
+      '식용유 1숟갈을 두르고 5초 정도 기다려요',
+      '달걀을 그릇에 한 번 깨서 담은 뒤 팬에 살살 부어요 (직접 팬에 깨면 껍질이 들어갈 수 있어요)',
+      '흰자가 하얗게 익기 시작하면 약불로 줄여요 (약 1분)',
+      '취향대로 익혀요. 노른자 반숙은 2분, 완숙은 3-4분이 기준이에요',
+      '뜨거운 밥을 그릇에 담고 그 위에 달걀을 올려요',
+      '간장 1숟갈을 노른자 주변에 빙 둘러 뿌리고, 참기름 몇 방울과 대파를 올리면 완성'
+    ],
+    tip: '버터 한 조각(엄지손톱 크기)을 뜨거운 밥에 비벼주면 카페 메뉴 같은 풍미가 납니다. 노른자를 터뜨려 비벼 먹는 것이 정석!',
+    caution: '달걀을 강불에서 부치면 가장자리가 까맣게 타고 흰자만 부풀어요. 반드시 중불~약불에서!'
+  },
+  {
+    name: '업그레이드 라면', diff: 1, time: '8분', portions: '1인분',
+    heroEmoji: '🍜', heroClass: 'hero-2',
+    need: ['라면', '달걀'], optional: ['대파', '김치', '치즈', '햄', '양파'],
+    ingredients: [
+      ['라면', '1봉지'], ['물', '550ml (종이컵 약 3컵)'], ['달걀', '1개'],
+      ['대파 (선택)', '5cm'], ['치즈 (선택)', '1장'], ['김치 (선택)', '1/4컵']
+    ],
+    prep: [
+      '대파는 송송 썰고, 양파를 넣을 거면 얇게 채 썰어 두세요',
+      '김치는 가위로 한입 크기로 잘라두면 편해요'
+    ],
+    steps: [
+      '냄비에 물 550ml를 붓고 센불로 끓여요 (작은 거품이 올라오기 시작하면 곧 끓어요)',
+      '물이 팔팔 끓으면(큰 기포가 활발히 올라옴) 스프와 건더기를 먼저 넣고 30초 끓여요',
+      '면을 넣어요. 면을 손으로 살살 풀어주면서 익혀요 (안 풀면 한 덩어리로 붙어요)',
+      '햄, 양파, 김치를 넣을 거면 이때 같이 넣어요',
+      '4분 정도 끓이다가 (면발 익은 정도는 한 가닥 꺼내서 씹어보면 알 수 있어요) 달걀을 깨서 넣어요',
+      '달걀을 풀고 싶으면 젓가락으로 휘저어 풀고, 반숙으로 먹으려면 그대로 30초~1분 더 끓여요',
+      '불을 끄고 그릇에 옮긴 뒤 치즈와 대파를 올려요'
+    ],
+    tip: '치즈는 부드러움, 김치는 칼칼함, 우유 1숟갈은 국물의 진한맛을 더해줘요. 콩나물이 있다면 한 줌 넣어 끓이면 시원한 맛이 살아나요.',
+    caution: '면을 넣고 너무 오래 끓이면 면이 붇고 국물 양도 줄어요. 4분 넘기지 않기!'
+  },
+  {
+    name: '마요참치 토스트', diff: 1, time: '10분', portions: '1인분',
+    heroEmoji: '🥪', heroClass: 'hero-3',
+    need: ['식빵', '참치캔'], optional: ['마요네즈', '치즈', '양파', '케첩'],
+    ingredients: [
+      ['식빵', '2장'], ['참치캔', '1개 (작은 사이즈)'], ['마요네즈', '2숟갈'],
+      ['양파 (선택)', '1/4개'], ['치즈 (선택)', '1장'], ['후추 (선택)', '약간']
+    ],
+    prep: [
+      '양파를 잘게 다져요 (다지기 = 사방 3-5mm 정도의 작은 조각으로 자르기)',
+      '다진 양파는 찬물에 1분 담갔다 빼면 매운맛이 빠져요'
+    ],
+    steps: [
+      '참치캔 뚜껑을 살짝 열고 캔을 기울여 기름을 모두 따라 버려요 (안 빼면 너무 느끼해요)',
+      '그릇에 참치, 마요네즈 2숟갈, 다진 양파, 후추를 넣고 잘 섞어요',
+      '식빵 1장 위에 참치 마요를 듬뿍 올려요',
+      '치즈를 한 장 올리고, 다른 식빵으로 덮어요',
+      '팬에 약불로 식빵을 올리고 4분 정도 굽다가 노릇해지면 뒤집어요 (탈 수 있으니 자주 확인!)',
+      '뒷면도 3-4분 구우면 완성. 반으로 잘라 드세요'
+    ],
+    tip: '에어프라이어가 있다면 180도에서 5분 굽고 한 번 뒤집어 3분 더 구워요. 식빵 한쪽에 버터를 발라 굽고 그 위에 올리면 풍미가 두 배!',
+    caution: '강불에서 굽거나 자리를 비우면 겉만 타고 속이 차가워요. 반드시 약불!'
+  },
+  {
+    name: '김치볶음밥', diff: 1, time: '15분', portions: '1인분',
+    heroEmoji: '🍛', heroClass: 'hero-4',
+    need: ['밥', '김치'], optional: ['달걀', '햄', '대파', '치즈', '참기름'],
+    ingredients: [
+      ['밥', '1공기 (약 200g, 식은 밥이 더 좋아요)'], ['김치', '1컵 (잘 익은 것)'],
+      ['김치국물', '2숟갈'], ['식용유', '2숟갈'], ['설탕', '0.5숟갈'],
+      ['햄 (선택)', '1/2캔'], ['달걀 (선택)', '1개'], ['참기름 (선택)', '0.5숟갈']
+    ],
+    prep: [
+      '김치를 도마 위에 펼쳐 가위로 한입 크기(약 1cm)로 잘게 잘라요',
+      '햄을 사용한다면 사방 1cm 크기 깍두기 모양으로 썰어요',
+      '대파는 송송 썰어 둡니다'
+    ],
+    steps: [
+      '팬에 식용유 2숟갈을 두르고 중불로 달궈요 (15초 정도)',
+      '김치를 넣고 2분간 볶아요. 색이 진해지고 향이 강해지면 잘 익은 것',
+      '설탕 0.5숟갈을 넣어 김치의 신맛을 잡아주고, 햄이 있다면 함께 볶아요 (1분)',
+      '밥을 넣고 주걱으로 김치와 골고루 섞으며 볶아요. 밥알이 뭉치지 않게 살살 풀어주세요',
+      '김치국물 2숟갈을 둘러 넣고 1-2분 더 볶으면 색이 예쁜 빨간색이 돼요',
+      '불을 끄고 참기름과 대파를 넣고 한 번 더 비벼요',
+      '계란후라이를 따로 부쳐서 위에 올리면 완성. 치즈를 올려 녹여 먹어도 좋아요'
+    ],
+    tip: '갓 지은 밥은 너무 끈적해서 볶음밥에 안 맞아요. 식은 밥이나 전날 밥을 사용하세요. 신김치일수록 더 맛있어요!',
+    caution: '간장을 추가하지 마세요. 김치 자체가 짭짤해서 간장을 넣으면 짜져요.'
+  },
+  {
+    name: '토마토 스파게티', diff: 2, time: '20분', portions: '1인분',
+    heroEmoji: '🍝', heroClass: 'hero-5',
+    need: ['스파게티면'], optional: ['토마토', '마늘', '양파', '베이컨', '버터', '간장', '치즈', '케첩'],
+    ingredients: [
+      ['스파게티면', '1인분 (지름 2.5cm 한 줌, 약 100g)'], ['물', '1.5L'], ['소금', '1숟갈'],
+      ['마늘', '4-5쪽'], ['양파', '1/2개'], ['베이컨', '2-3줄'],
+      ['토마토 또는 케첩', '토마토 2개 또는 케첩 4숟갈'], ['올리브유 또는 식용유', '2숟갈'],
+      ['소금/후추', '약간'], ['치즈가루 (선택)', '취향껏']
+    ],
+    prep: [
+      '마늘은 칼의 옆면으로 눌러 으깬 뒤 잘게 다져요 (또는 다진 마늘 1숟갈)',
+      '양파는 가늘게 채 썰어요 (반으로 자르고 결을 따라 얇게 자르기)',
+      '베이컨은 1cm 폭으로 잘라요',
+      '토마토를 쓴다면 끓는 물에 30초 데쳐 껍질을 벗기고 잘게 다져요'
+    ],
+    steps: [
+      '큰 냄비에 물 1.5L를 끓이고 소금 1숟갈을 넣어요 (소금이 들어가야 면에 간이 배요)',
+      '물이 팔팔 끓으면 면을 부채꼴로 펼쳐 넣고 8-9분 삶아요 (포장지 표시 시간 -1분)',
+      '면 삶는 동안 다른 팬에 올리브유 2숟갈을 두르고 약불로 달궈요',
+      '마늘을 넣고 향이 올라올 때까지 1분간 천천히 볶아요 (마늘이 갈색이 되면 안 돼요!)',
+      '베이컨을 넣고 1분, 양파를 넣고 2분간 볶아요 (양파가 투명해지면 OK)',
+      '토마토(또는 케첩 4숟갈)를 넣고 중불로 5분간 끓여요',
+      '소스에 면수(면 삶은 물) 1국자를 넣어주면 소스가 부드러워져요',
+      '삶은 면을 집게로 건져 소스 팬에 옮기고 1-2분간 함께 볶아요',
+      '소금, 후추로 간을 맞추고 그릇에 담아 치즈가루를 뿌려요'
+    ],
+    tip: '토마토가 없으면 케첩 4숟갈 + 간장 1숟갈로도 충분해요. 면수(면 삶은 물)는 절대 다 버리지 마세요. 소스가 뻑뻑할 때 한 국자씩 넣으면 마법처럼 부드러워져요.',
+    caution: '면을 너무 오래 삶지 마세요. 포장지 시간보다 1분 짧게 삶고 소스에서 마저 익혀야 알덴테(쫄깃한 식감)가 나와요.'
+  },
+  {
+    name: '감자채볶음', diff: 1, time: '15분', portions: '2인분 반찬',
+    heroEmoji: '🥔', heroClass: 'hero-6',
+    need: ['감자'], optional: ['양파', '당근', '소금', '후추'],
+    ingredients: [
+      ['감자', '중간 크기 2개'], ['양파', '1/2개'], ['당근 (선택)', '1/4개'],
+      ['식용유', '2숟갈'], ['소금', '0.5숟갈'], ['후추', '약간'], ['통깨 (선택)', '약간']
+    ],
+    prep: [
+      '감자 껍질을 필러(감자칼)로 벗겨요',
+      '감자를 5mm 두께로 썰고, 그 슬라이스를 다시 5mm 폭의 채로 썰어요 (성냥개비 굵기)',
+      '채 썬 감자를 찬물에 5분 담가 전분기를 빼고 체에 받쳐 물기를 빼요',
+      '양파, 당근도 같은 굵기로 채 썰어요'
+    ],
+    steps: [
+      '감자의 물기를 키친타올로 꾹꾹 눌러 완전히 닦아요 (이 과정이 정말 중요!)',
+      '팬에 식용유 2숟갈을 두르고 중불에 달궈요',
+      '감자를 넣고 3-4분간 볶아요. 처음엔 가만히 두다가 30초마다 한 번씩 뒤적이면 모양이 안 부서져요',
+      '감자가 반쯤 투명해지면 양파와 당근을 넣고 2분 더 볶아요',
+      '소금 0.5숟갈, 후추 약간을 뿌리고 잘 섞어요',
+      '감자가 살짝 부드럽지만 형태가 살아있을 때 불을 꺼요 (3-5분 정도)',
+      '통깨를 뿌려 마무리'
+    ],
+    tip: '물기를 빼는 게 핵심이에요. 물기가 있으면 기름이 튀고 감자가 뭉개져요. 키친타올로 두 번 정도 꾹꾹 눌러 닦으세요.',
+    caution: '주걱으로 너무 자주 휘저으면 감자가 부서져 으깬 감자가 돼요. 30초~1분 간격으로 뒤집기!'
+  },
+  {
+    name: '계란말이', diff: 2, time: '15분', portions: '2인분 반찬',
+    heroEmoji: '🍳', heroClass: 'hero-7',
+    need: ['달걀'], optional: ['대파', '당근', '햄', '치즈', '소금'],
+    ingredients: [
+      ['달걀', '4개'], ['소금', '약간 (1/3 작은술)'], ['우유 또는 물', '2숟갈'],
+      ['식용유', '1숟갈'], ['대파 (선택)', '5cm'], ['당근 (선택)', '약간'],
+      ['햄 또는 치즈 (선택)', '취향껏']
+    ],
+    prep: [
+      '달걀을 큰 그릇에 깨서 담아요',
+      '대파, 당근, 햄을 사용한다면 매우 잘게 다져요 (사방 3mm 이하)',
+      '달걀에 우유 2숟갈, 소금 약간, 다진 재료들을 넣고 젓가락으로 잘 풀어요 (50번 정도 휘젓기)',
+      '체에 한 번 거르면 더 부드럽지만 생략해도 OK'
+    ],
+    steps: [
+      '사각팬이 가장 좋지만 동그란 팬도 됩니다. 약불로 1분 달궈요',
+      '식용유를 키친타올에 묻혀 팬에 골고루 발라요 (기름이 많으면 미끌려서 말기 어려워요)',
+      '달걀물을 1/3 정도 부어 팬 바닥을 얇게 덮어요',
+      '윗면이 살짝 마르고 가장자리가 익기 시작하면(약 30초~1분) 한쪽 끝에서 젓가락이나 뒤집개로 돌돌 말아요',
+      '말은 달걀을 한쪽으로 밀고, 빈 팬에 다시 달걀물 1/3을 부어요',
+      '먼저 만 달걀 밑에도 달걀물이 들어가게 살짝 들어줘요',
+      '같은 방법으로 다시 말아요. 달걀물이 끝날 때까지 반복',
+      '다 만 후 도마에 올려 1분 식힌 뒤 한입 크기로 썰어요'
+    ],
+    tip: '치즈 슬라이스를 깔고 말면 길게 늘어나는 식감을, 김 1장을 깔고 말면 김계란말이가 됩니다. 식초 1방울을 넣으면 비린내가 사라져요.',
+    caution: '강불에서 하면 겉만 타고 속은 안 익어요. 반드시 약불! 달걀이 너무 단단해져서 말리지 않으면 불을 끄고 말아도 돼요.'
+  },
+  {
+    name: '된장찌개', diff: 2, time: '25분', portions: '2인분',
+    heroEmoji: '🍲', heroClass: 'hero-8',
+    need: ['된장'], optional: ['감자', '양파', '애호박', '버섯', '두부', '마늘', '대파', '돼지고기'],
+    ingredients: [
+      ['물', '500ml (종이컵 약 2.5컵)'], ['된장', '2숟갈'], ['고추장 (선택)', '0.5숟갈 (감칠맛용)'],
+      ['다진마늘', '1숟갈'], ['감자', '1/2개'], ['양파', '1/4개'],
+      ['애호박', '1/4개'], ['두부', '1/4모'], ['대파', '1/2대'],
+      ['돼지고기 (선택)', '한 줌 약 100g'], ['버섯 (선택)', '한 줌']
+    ],
+    prep: [
+      '감자, 양파, 애호박, 두부를 사방 1.5cm의 깍두기 모양으로 썰어요',
+      '버섯은 손으로 찢거나 썰어두고, 대파는 어슷썰기(비스듬하게 자르기)로 썰어요',
+      '돼지고기는 한입 크기로 썰어두세요'
+    ],
+    steps: [
+      '냄비에 식용유 1숟갈을 두르고 돼지고기를 중불에 볶아요 (3분, 겉이 하얗게 변할 때까지)',
+      '돼지고기 색이 변하면 다진마늘 1숟갈을 넣고 30초 더 볶아요',
+      '물 500ml를 붓고 된장 2숟갈을 풀어요 (국자에 된장을 올리고 국물에 살살 풀면 잘 풀려요)',
+      '감자와 양파를 넣고 센불로 끓여요. 끓어오르면 중불로 줄여 5분간 끓여요',
+      '애호박과 버섯을 넣고 5분 더 끓여요 (감자를 젓가락으로 찔러 들어가면 다 익은 것)',
+      '두부를 넣고 3분 더 끓여요 (두부는 오래 끓이면 부서져요)',
+      '간을 봐요. 싱거우면 된장을 0.5숟갈씩 추가하고, 짜면 물을 보충해요',
+      '마지막에 대파를 넣고 30초만 더 끓이면 완성'
+    ],
+    tip: '고추장 0.5숟갈을 넣으면 감칠맛이 깊어져요. 매운맛을 원하면 청양고추 1개를 어슷썰어 마지막에 넣으세요.',
+    caution: '된장은 한 번에 다 넣지 말고 처음엔 1.5숟갈만 넣고 간을 본 뒤 추가하세요. 짜지면 되돌리기 어려워요.'
+  },
+  {
+    name: '양배추전', diff: 1, time: '15분', portions: '2장',
+    heroEmoji: '🥬', heroClass: 'hero-9',
+    need: ['양배추', '달걀'], optional: ['양파', '당근', '소금', '치즈'],
+    ingredients: [
+      ['양배추', '잎 큰 거 4-5장 (약 2컵)'], ['달걀', '2개'],
+      ['밀가루 또는 부침가루 (선택)', '3숟갈'], ['소금', '0.5숟갈'],
+      ['식용유', '3숟갈'], ['양파 (선택)', '1/4개']
+    ],
+    prep: [
+      '양배추를 가늘게 채 썰어요 (잎을 돌돌 말아 썰면 편해요, 폭 5mm 정도)',
+      '양파를 사용한다면 채 썰어 둡니다',
+      '큰 그릇에 양배추, 양파, 달걀, 밀가루, 소금을 넣고 손으로 조물조물 잘 섞어요',
+      '반죽이 너무 빡빡하면 물 1-2숟갈, 너무 묽으면 밀가루를 더 추가해요'
+    ],
+    steps: [
+      '팬에 식용유 1.5숟갈을 두르고 중불에 1분 달궈요',
+      '반죽의 절반을 팬 가운데에 올리고 주걱으로 동그랗고 평평하게 펴요 (두께 1cm 정도)',
+      '약불로 줄이고 4분간 그대로 둬요. 가장자리가 노릇해지면 뒤집을 때',
+      '뒤집개로 한 번에 빠르게 뒤집어요 (망설이면 부서져요)',
+      '뒷면도 3-4분 구우면 완성',
+      '간장 1 + 식초 0.5 + 설탕 약간을 섞은 소스에 찍어 드세요'
+    ],
+    tip: '치즈를 한쪽 면에 올리고 뒤집어 녹이면 진짜 맛있어요. 부침가루를 사용하면 간이 이미 되어 있어 소금을 빼야 해요.',
+    caution: '뒤집을 때 머뭇거리면 부서져요. 한 번에 손목을 휙! 자신 없으면 작게 부쳐도 돼요.'
+  },
+  {
+    name: '허니버터 토스트', diff: 1, time: '7분', portions: '1인분',
+    heroEmoji: '🍞', heroClass: 'hero-10',
+    need: ['식빵', '버터'], optional: ['설탕', '치즈', '달걀'],
+    ingredients: [
+      ['식빵', '2장'], ['버터', '2숟갈 (또는 슬라이스 버터 2장)'],
+      ['설탕 또는 꿀', '1숟갈'], ['치즈 (선택)', '1장'], ['달걀 (선택)', '1개']
+    ],
+    prep: [
+      '버터를 미리 실온에 5분 두면 발리기 좋아요 (전자레인지 5초도 OK, 그 이상은 녹아요)'
+    ],
+    steps: [
+      '식빵 한 면에 버터를 듬뿍 발라요 (가장자리까지 빈틈없이)',
+      '그 위에 설탕을 얇게 솔솔 뿌려요 (꿀은 구운 뒤에 발라요)',
+      '팬을 약불로 1분 달군 뒤, 버터 바른 면이 아래로 가게 식빵을 올려요',
+      '주걱으로 살짝 눌러주며 3분간 구워요. 노릇한 갈색이 되면 뒤집어요',
+      '뒷면도 같은 방법으로 굽거나, 뒤집어 30초만 살짝 데워요',
+      '꿀을 사용한다면 다 구운 뒤 발라요. 치즈를 올렸다면 잔열로 녹여요'
+    ],
+    tip: '에어프라이어가 있다면 180도에서 4분이면 한쪽도 안 뒤집고 완성! 설탕 대신 시나몬 가루를 약간 섞으면 시나몬 토스트.',
+    caution: '꿀을 미리 발라 굽지 마세요. 꿀이 타서 쓴맛이 나요.'
+  },
+  {
+    name: '오므라이스', diff: 2, time: '25분', portions: '1인분',
+    heroEmoji: '🍱', heroClass: 'hero-11',
+    need: ['밥', '달걀', '케첩'], optional: ['양파', '당근', '햄', '소시지', '버터'],
+    ingredients: [
+      ['밥', '1공기 (식은 밥이 좋아요)'], ['달걀', '3개'], ['우유', '1숟갈'],
+      ['케첩', '4숟갈 (볶음용 3 + 토핑용 1)'], ['양파', '1/4개'],
+      ['당근 (선택)', '약간'], ['햄 또는 소시지', '1/2캔 또는 2개'],
+      ['버터 또는 식용유', '2숟갈'], ['소금/후추', '약간']
+    ],
+    prep: [
+      '양파, 당근을 사방 5mm로 잘게 다져요',
+      '햄/소시지도 같은 크기로 잘게 잘라요',
+      '달걀 3개를 그릇에 깨고 우유 1숟갈, 소금 약간을 넣어 풀어요'
+    ],
+    steps: [
+      '[케첩 볶음밥 만들기] 팬에 버터 1숟갈을 녹이고 다진 양파, 당근을 2분간 볶아요',
+      '햄을 넣고 1분 더 볶아요',
+      '밥을 넣고 주걱으로 살살 비비며 1분 볶아요',
+      '한쪽으로 밥을 밀어두고 빈자리에 케첩 3숟갈을 부어 30초간 끓이듯 졸여요 (이 단계가 케첩 풍미의 비결)',
+      '졸인 케첩과 밥을 잘 섞어 1분 더 볶고, 소금/후추로 간을 맞춰요',
+      '볶음밥을 그릇에 럭비공 모양으로 동그랗게 담아 두세요',
+      '[달걀 부치기] 다른 팬에 약불로 버터 1숟갈을 녹여요',
+      '풀어둔 달걀물을 한 번에 부어 팬 전체를 덮고, 젓가락으로 살살 저어 살짝 익은 스크램블 상태를 만들어요 (1분)',
+      '달걀이 윗면은 살짝 덜 익은 반숙 상태일 때 불을 꺼요',
+      '팬을 기울여 달걀을 볶음밥 위에 살포시 덮어요',
+      '위에 케첩 1숟갈로 모양을 그려 마무리'
+    ],
+    tip: '달걀 부칠 때 약불 + 부드러운 반숙이 핵심. 자신 없으면 평범하게 지단(얇게 부친 달걀)을 만들어 위에 덮어도 됩니다.',
+    caution: '케첩을 끓이지 않고 그냥 넣으면 시고 비린 맛이 나요. 30초 졸여서 단맛을 끌어올리세요.'
+  },
+  {
+    name: '오이무침', diff: 1, time: '10분', portions: '2인분 반찬',
+    heroEmoji: '🥗', heroClass: 'hero-12',
+    need: ['오이'], optional: ['고춧가루', '간장', '설탕', '마늘', '참기름'],
+    ingredients: [
+      ['오이', '1개'], ['소금', '0.5숟갈 (절임용)'],
+      ['고춧가루', '1숟갈'], ['간장', '1숟갈'], ['설탕', '0.5숟갈'],
+      ['식초', '0.5숟갈'], ['다진마늘', '0.5숟갈'], ['참기름', '0.5숟갈'],
+      ['통깨', '약간']
+    ],
+    prep: [
+      '오이를 굵은 소금으로 박박 문질러 표면의 가시와 농약을 제거하고 물에 헹궈요',
+      '오이를 어슷썰기 해요 (칼을 45도 비스듬히 세워 5mm 두께로 자르기)',
+      '썬 오이에 소금 0.5숟갈을 뿌려 5분 두면 물이 빠져요. 손으로 살짝 짜서 물기를 빼주세요'
+    ],
+    steps: [
+      '큰 그릇에 고춧가루 1, 간장 1, 설탕 0.5, 식초 0.5, 다진마늘 0.5를 넣고 섞어요',
+      '물기 뺀 오이를 넣고 손으로 조물조물 골고루 무쳐요',
+      '참기름 0.5숟갈과 통깨를 넣고 한 번 더 가볍게 섞어요',
+      '5분 정도 두면 양념이 배어 더 맛있어요'
+    ],
+    tip: '고춧가루를 빼고 간장+식초+설탕+참기름만 넣으면 새콤달콤 오이무침이 됩니다. 양파 1/4개를 채 썰어 함께 넣어도 좋아요.',
+    caution: '소금에 절이지 않으면 양념이 안 배고 물이 나와 싱거워져요. 5분만 절여도 큰 차이!'
+  },
+  {
+    name: '치즈 만두구이', diff: 1, time: '12분', portions: '1-2인분',
+    heroEmoji: '🥟', heroClass: 'hero-13',
+    need: ['만두'], optional: ['치즈', '간장', '식초'],
+    ingredients: [
+      ['냉동 만두', '8-10개'], ['식용유', '2숟갈'], ['물', '3숟갈'],
+      ['치즈 (선택)', '1-2장 또는 슈레드치즈 한 줌'],
+      ['간장', '1숟갈 (소스용)'], ['식초', '0.5숟갈 (소스용)']
+    ],
+    prep: [
+      '냉동 만두는 해동하지 마세요. 그대로 사용해야 모양이 안 부서져요',
+      '소스용 간장 1 + 식초 0.5를 작은 종지에 미리 섞어 둡니다'
+    ],
+    steps: [
+      '팬에 식용유 2숟갈을 두르고 중불에 1분 달궈요',
+      '냉동 만두를 한 면이 바닥에 닿게 가지런히 올려요 (서로 닿지 않게)',
+      '약불로 줄이고 2분간 그대로 둬요. 바닥이 노릇한 갈색이 되면 OK',
+      '물 3숟갈을 만두 사이사이에 부어요 (기름이 튈 수 있으니 조심!)',
+      '바로 뚜껑을 덮고 약불에서 4분간 쪄요 (이렇게 하면 속까지 익어요)',
+      '뚜껑을 열어 물이 다 졸아들었는지 확인해요. 남아있으면 30초 더 졸여요',
+      '치즈를 만두 위에 골고루 올리고 다시 뚜껑을 덮어 30초 (치즈가 녹을 때까지)',
+      '소스에 찍어 드세요'
+    ],
+    tip: '뚜껑이 없는 팬이라면 큰 접시나 호일로 덮으세요. 군만두처럼 더 바삭하게 먹으려면 마지막에 뚜껑을 열고 1분 더 구워요.',
+    caution: '물을 부을 때 기름이 튈 수 있어요. 뒤로 한 발 물러서서 빠르게 부으세요.'
+  },
+  {
+    name: '우유크림 파스타', diff: 2, time: '20분', portions: '1인분',
+    heroEmoji: '🍝', heroClass: 'hero-14',
+    need: ['스파게티면', '우유'], optional: ['버터', '치즈', '마늘', '베이컨', '양파'],
+    ingredients: [
+      ['스파게티면', '100g (지름 2.5cm 한 줌)'], ['물', '1.5L'], ['소금', '1숟갈'],
+      ['우유', '200ml (종이컵 1컵)'], ['버터', '1숟갈'],
+      ['마늘', '4쪽 다진 것'], ['베이컨', '2-3줄'], ['양파', '1/4개'],
+      ['슬라이스 치즈 또는 파마산 치즈', '2장 또는 2숟갈'],
+      ['소금/후추', '약간']
+    ],
+    prep: [
+      '마늘은 잘게 다지고, 양파는 채 썰고, 베이컨은 1cm 폭으로 잘라요'
+    ],
+    steps: [
+      '큰 냄비에 물 1.5L를 끓이고 소금 1숟갈을 넣어요',
+      '물이 팔팔 끓으면 스파게티면을 넣고 8분 삶아요',
+      '면 삶는 동안 다른 팬에 버터 1숟갈을 약불로 녹여요 (버터는 잘 타니 약불!)',
+      '다진 마늘을 넣고 향이 올라올 때까지 1분간 볶아요',
+      '베이컨과 양파를 넣고 중불로 2분간 볶아요',
+      '우유 200ml를 붓고 약불로 줄여 3분간 보글보글 졸여요 (센불이면 우유가 분리돼요)',
+      '치즈를 넣고 녹을 때까지 저어요',
+      '삶은 면을 집게로 건져 팬에 옮기고 1분간 함께 졸여요',
+      '소스가 너무 빡빡하면 면수 1국자, 너무 묽으면 1분 더 졸여요',
+      '소금, 후추로 간을 맞추고 그릇에 담아 후추를 살짝 더 뿌려요'
+    ],
+    tip: '생크림이 없어도 우유 + 치즈 조합이면 충분히 크리미해요. 양송이버섯이 있다면 베이컨과 함께 볶으면 더 풍부한 맛.',
+    caution: '우유는 끓이면 분리돼서 모양이 흐트러져요. 반드시 보글거리는 정도의 약불 유지!'
+  }
+];
+
+const diffLabel = { 1: '쉬움', 2: '보통', 3: '어려움' };
+
+let selected = new Set();
+let activeCategory = Object.keys(ingredientCategories)[0];
+
+function renderTabs() {
+  const tabs = document.getElementById('tabs');
+  tabs.innerHTML = Object.keys(ingredientCategories).map(cat =>
+    `<button class="tab ${cat===activeCategory?'active':''}" onclick="switchCategory('${cat}')">${cat}</button>`
+  ).join('');
+}
+
+function switchCategory(cat) {
+  activeCategory = cat;
+  renderTabs();
+  renderIngredients();
+}
+
+function renderIngredients() {
+  const grid = document.getElementById('ingredients');
+  grid.innerHTML = ingredientCategories[activeCategory].map(ing =>
+    `<div class="ingredient-item ${selected.has(ing)?'selected':''}" onclick="toggleIngredient('${ing}')">
+      <span class="ingredient-icon">${getIcon(ing)}</span>
+      <span>${ing}</span>
+    </div>`
+  ).join('');
+}
+
+function toggleIngredient(ing) {
+  if (selected.has(ing)) selected.delete(ing);
+  else selected.add(ing);
+  renderIngredients();
+  renderSelected();
+}
+
+function addCustom() {
+  const input = document.getElementById('customIngredient');
+  const val = input.value.trim();
+  if (val) {
+    selected.add(val);
+    input.value = '';
+    renderIngredients();
+    renderSelected();
+  }
+}
+
+document.getElementById('customIngredient').addEventListener('keypress', e => {
+  if (e.key === 'Enter') addCustom();
+});
+
+function renderSelected() {
+  const list = document.getElementById('selectedList');
+  const count = document.getElementById('selectedCount');
+  const clearBtn = document.getElementById('clearBtn');
+
+  count.textContent = `선택된 재료 ${selected.size}개`;
+  clearBtn.disabled = selected.size === 0;
+
+  if (selected.size === 0) {
+    list.innerHTML = '<div class="empty-message">아직 선택된 재료가 없습니다</div>';
+    return;
+  }
+  list.innerHTML = [...selected].map(ing =>
+    `<span class="selected-tag">
+      <span class="tag-icon">${getIcon(ing)}</span>
+      <span>${ing}</span>
+      <span class="remove" onclick="removeSelected('${ing}')">×</span>
+    </span>`
+  ).join('');
+}
+
+function removeSelected(ing) {
+  selected.delete(ing);
+  renderSelected();
+  renderIngredients();
+}
+
+function clearAll() {
+  if (selected.size === 0) return;
+  if (confirm('선택한 재료를 모두 지울까요?')) {
+    selected.clear();
+    renderSelected();
+    renderIngredients();
+  }
+}
+
+function difficultyStars(diff) {
+  let stars = '';
+  for (let i = 1; i <= 3; i++) {
+    stars += i <= diff ? '★' : '<span class="star-empty">★</span>';
+  }
+  return stars;
+}
+
+function findRecipes() {
+  const container = document.getElementById('recipes');
+  if (selected.size === 0) {
+    container.innerHTML = '<div class="empty">재료를 먼저 선택해주세요</div>';
+    return;
+  }
+
+  const scored = recipes.map(r => {
+    const have = r.need.filter(n => selected.has(n));
+    const missing = r.need.filter(n => !selected.has(n));
+    const optHave = r.optional.filter(o => selected.has(o));
+    const needScore = have.length / r.need.length;
+    const totalScore = needScore * 70 + (optHave.length / r.optional.length) * 30;
+    return { ...r, have, missing, optHave, totalScore, needScore };
+  }).filter(r => r.needScore >= 0.5)
+    .sort((a, b) => b.totalScore - a.totalScore)
+    .slice(0, 5);
+
+  if (scored.length === 0) {
+    container.innerHTML = `
+      <div class="empty">
+        선택한 재료로 만들 수 있는 레시피가 부족해요
+        <small>달걀, 밥, 양파, 김치 같은 기본 재료를 추가해보세요</small>
+      </div>`;
+    return;
+  }
+
+  container.innerHTML = scored.map(r => {
+    const matchPct = Math.round(r.totalScore);
+    const allHave = r.have.concat(r.optHave);
+    const ingredientsHtml = `
+      <div class="recipe-section">
+        <div class="label">재료 (${r.portions})</div>
+        <div class="ingredients-table">
+          ${r.ingredients.map(([n, a]) => `
+            <div class="ing-row">
+              <span class="ing-name"><span>${getIcon(n)}</span>${n}</span>
+              <span class="ing-amount">${a}</span>
+            </div>`).join('')}
+        </div>
+      </div>`;
+    const prepHtml = r.prep ? `
+      <div class="recipe-section">
+        <div class="label">사전 준비</div>
+        <ul>${r.prep.map(p => `<li>${p}</li>`).join('')}</ul>
+      </div>` : '';
+    const cautionHtml = r.caution ? `
+      <div class="caution"><strong>⚠️ 주의</strong> · ${r.caution}</div>` : '';
+
+    return `
+      <div class="recipe-card">
+        <div class="recipe-hero ${r.heroClass}">${r.heroEmoji}</div>
+        <div class="recipe-body">
+          <div class="recipe-title">${r.name}</div>
+          <div class="recipe-meta">
+            <span class="difficulty-label">난이도</span>
+            <span class="meta-tag stars">${difficultyStars(r.diff)}</span>
+            <span class="meta-tag time">⏱ ${r.time}</span>
+            <span class="meta-tag portion">👥 ${r.portions}</span>
+            <span class="meta-tag match">✓ 매칭률 ${matchPct}%</span>
+          </div>
+          <div class="match-bar"><div class="match-fill" style="width:${matchPct}%"></div></div>
+          <div class="ingredient-status">보유 재료: ${allHave.map(n => getIcon(n)+' '+n).join(', ') || '없음'}</div>
+          ${r.missing.length
+            ? `<div class="ingredient-status missing">추가로 필요한 재료: ${r.missing.map(n => getIcon(n)+' '+n).join(', ')}</div>`
+            : `<div class="ingredient-status all-have">필수 재료를 모두 갖고 계세요!</div>`}
+
+          ${ingredientsHtml}
+          ${prepHtml}
+
+          <div class="recipe-section">
+            <div class="label">만드는 법</div>
+            <ol>${r.steps.map(s => `<li>${s}</li>`).join('')}</ol>
+          </div>
+
+          <div class="tip"><strong>💡 꿀팁</strong> · ${r.tip}</div>
+          ${cautionHtml}
+        </div>
+      </div>
+    `;
+  }).join('');
+
+  container.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+renderTabs();
+renderIngredients();
+renderSelected();
+</script>
+</body>
+</html>
