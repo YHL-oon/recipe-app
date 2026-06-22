@@ -1,0 +1,919 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>감정 일기</title>
+  <link rel="preconnect" href="https://cdn.jsdelivr.net" />
+  <link href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:      #EDE5D8;
+      --card:    #F5EFE4;
+      --card2:   #FAF6EF;
+      --text:    #3A2D22;
+      --muted:   #9A8878;
+      --border:  #D9CEBB;
+      --shadow:  0 2px 14px rgba(90,60,20,.09);
+      --shadow-lg: 0 8px 32px rgba(90,60,20,.14);
+      --radius:  20px;
+      --radius-sm: 14px;
+      --max-w:   700px;
+      --ink:     #5E4B45;
+    }
+
+    html, body { height: 100%; overflow: hidden; }
+
+    body {
+      font-family: 'Pretendard', 'Apple SD Gothic Neo', 'Noto Sans KR', sans-serif;
+      color: var(--text);
+      background-color: var(--bg);
+      background-image:
+        url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300'%3E%3Cfilter id='g'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.78' numOctaves='4' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='300' height='300' filter='url(%23g)' opacity='0.042'/%3E%3C/svg%3E");
+    }
+
+    /* ── SCREEN SYSTEM ── */
+    #app { position: relative; width: 100%; height: 100%; overflow: hidden; }
+
+    .screen {
+      position: absolute; inset: 0; overflow-y: auto;
+      background-color: var(--bg);
+      background-image:
+        url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300'%3E%3Cfilter id='g'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.78' numOctaves='4' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='300' height='300' filter='url(%23g)' opacity='0.042'/%3E%3C/svg%3E");
+      transition: transform 0.32s cubic-bezier(.4,0,.2,1), opacity 0.32s ease;
+      will-change: transform, opacity;
+    }
+    .screen.state-center { transform: translateX(0);    opacity: 1; pointer-events: auto; }
+    .screen.state-right  { transform: translateX(100%); opacity: 0; pointer-events: none; }
+    .screen.state-left   { transform: translateX(-100%);opacity: 0; pointer-events: none; }
+
+    .inner { max-width: var(--max-w); margin: 0 auto; padding: 0 28px 96px; }
+
+    /* ── AUTH ── */
+    .auth-wrap {
+      display: flex; flex-direction: column; justify-content: center;
+      min-height: 100vh; padding: 0 28px; max-width: var(--max-w); margin: 0 auto;
+    }
+    .auth-logo { text-align: center; margin-bottom: 40px; }
+    .auth-logo-title { font-size: 2.2rem; font-weight: 700; color: var(--text); letter-spacing: -0.04em; }
+    .auth-logo-sub { display: block; font-size: 0.82rem; color: var(--muted); font-weight: 400; margin-top: 6px; }
+    .auth-tab-row { display: flex; background: var(--border); border-radius: 10px; padding: 3px; margin-bottom: 24px; }
+    .auth-tab {
+      flex: 1; padding: 9px; border: none; background: none; border-radius: 8px;
+      font-family: inherit; font-size: 0.88rem; font-weight: 600; color: var(--muted); cursor: pointer; transition: all 0.15s;
+    }
+    .auth-tab.active { background: var(--card2); color: var(--text); box-shadow: var(--shadow); }
+    .auth-field { margin-bottom: 12px; }
+    .auth-label { display: block; font-size: 0.72rem; font-weight: 600; color: var(--muted); margin-bottom: 5px; letter-spacing: 0.06em; text-transform: uppercase; }
+    .auth-input {
+      width: 100%; padding: 13px 15px; background: var(--card2);
+      border: 1.5px solid var(--border); border-radius: var(--radius-sm);
+      font-family: inherit; font-size: 0.95rem; color: var(--text); outline: none;
+      transition: border-color 0.2s; box-shadow: inset 0 1px 3px rgba(0,0,0,.04);
+    }
+    .auth-input:focus { border-color: var(--ink); }
+    .auth-error { font-size: 0.78rem; color: #C0392B; margin-top: 10px; min-height: 18px; }
+    .btn-auth {
+      width: 100%; margin-top: 8px; padding: 15px;
+      background: var(--text); color: #F5EFE4; border: none; border-radius: var(--radius-sm);
+      font-family: inherit; font-size: 0.97rem; font-weight: 700; cursor: pointer;
+      letter-spacing: -0.01em; transition: opacity 0.15s;
+    }
+    .btn-auth:hover { opacity: 0.85; }
+
+    /* ── MAIN CALENDAR SCREEN ── */
+    .cal-header {
+      display: flex; align-items: flex-start; justify-content: space-between;
+      padding: 36px 28px 0; max-width: var(--max-w); margin: 0 auto;
+    }
+    .cal-user-greeting { font-size: 1.5rem; font-weight: 700; color: var(--text); letter-spacing: -0.03em; line-height: 1.3; }
+    .cal-user-sub { font-size: 0.82rem; color: var(--muted); margin-top: 4px; }
+    .cal-header-right { display: flex; flex-direction: column; align-items: flex-end; gap: 6px; }
+    .streak-pill {
+      display: inline-flex; align-items: center; gap: 4px;
+      background: rgba(139,111,71,.13); color: #7A5C38;
+      font-size: 0.74rem; font-weight: 600; padding: 4px 10px; border-radius: 999px;
+    }
+    .btn-logout {
+      background: none; border: none; font-family: inherit;
+      font-size: 0.74rem; font-weight: 500; color: var(--muted); cursor: pointer; padding: 2px 0;
+    }
+    .btn-logout:hover { color: #C0392B; }
+
+    .cal-month-nav {
+      display: flex; align-items: center; justify-content: space-between;
+      max-width: var(--max-w); margin: 24px auto 0; padding: 0 28px;
+    }
+    .cal-month-title { font-size: 1.1rem; font-weight: 700; color: var(--text); letter-spacing: -0.02em; }
+    .cal-nav-btn {
+      width: 32px; height: 32px; border: 1.5px solid var(--border); border-radius: 9px;
+      background: var(--card); cursor: pointer; font-size: 0.85rem; color: var(--muted);
+      display: flex; align-items: center; justify-content: center; transition: background 0.15s, border-color 0.15s;
+    }
+    .cal-nav-btn:hover { background: var(--card2); border-color: var(--ink); }
+
+    .cal-grid-wrap { max-width: var(--max-w); margin: 14px auto 0; padding: 0 28px; }
+    .cal-dow-row { display: grid; grid-template-columns: repeat(7,1fr); gap: 4px; margin-bottom: 5px; }
+    .cal-dow { text-align: center; font-size: 0.72rem; font-weight: 700; color: var(--muted); padding: 5px 0; }
+    .cal-day-row { display: grid; grid-template-columns: repeat(7,1fr); gap: 4px; }
+
+    .cal-cell {
+      aspect-ratio: 1; border-radius: 13px; position: relative;
+      display: flex; flex-direction: column; align-items: center; justify-content: flex-end;
+      padding-bottom: 5px; cursor: default; transition: background 0.15s;
+      font-size: 0.75rem; font-weight: 500; color: var(--muted);
+      background: transparent; border: none; font-family: inherit;
+    }
+    .cal-cell.has-entry { cursor: pointer; }
+    .cal-cell.has-entry:hover { background: rgba(90,60,20,.07); border-radius: 11px; }
+    .cal-cell.no-entry-day:not(.today):not(.future-day) { cursor: pointer; }
+    .cal-cell.no-entry-day:not(.today):not(.future-day):hover { background: rgba(90,60,20,.05); }
+    .cal-cell.today { outline: 2px solid var(--ink); outline-offset: -2px; color: var(--text); font-weight: 700; }
+    .cal-cell.today:not(.has-entry) { cursor: pointer; }
+    .cal-cell.empty { opacity: 0; pointer-events: none; }
+    .cal-cell.future-day { opacity: 0.35; cursor: default; }
+    .cell-blob { position: absolute; inset: 3px; bottom: 18px; pointer-events: none; }
+    .cell-num { position: relative; z-index: 1; line-height: 1; }
+
+    .cal-new-btn {
+      display: block; width: calc(100% - 56px); max-width: calc(var(--max-w) - 56px);
+      margin: 16px auto 0; padding: 16px;
+      background: var(--text); color: #F5EFE4; border: none; border-radius: var(--radius-sm);
+      font-family: inherit; font-size: 0.93rem; font-weight: 700; cursor: pointer;
+      letter-spacing: -0.01em; transition: opacity 0.15s;
+    }
+    .cal-new-btn:hover { opacity: 0.85; }
+
+    .cal-entry-card-wrap {
+      background: var(--card); border-radius: var(--radius); box-shadow: var(--shadow-lg);
+      padding: 20px 24px; margin: 14px 28px 0;
+      max-width: calc(var(--max-w) - 56px); margin-left: auto; margin-right: auto;
+      display: flex; gap: 14px; align-items: flex-start;
+      animation: fadeUp 0.22s ease;
+    }
+    .cal-entry-blob { width: 52px; height: 52px; flex-shrink: 0; }
+    .cal-entry-date { font-size: 0.72rem; color: var(--muted); font-weight: 500; margin-bottom: 5px; }
+    .cal-entry-text { font-size: 0.9rem; color: var(--text); line-height: 1.75; white-space: pre-wrap; word-break: break-all; }
+
+    /* ── TOPBAR ── */
+    .topbar {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 24px 28px 0; max-width: var(--max-w); margin: 0 auto;
+    }
+    .topbar-title { font-size: 1rem; font-weight: 700; color: var(--text); }
+    .btn-back {
+      background: none; border: none; font-family: inherit;
+      font-size: 0.88rem; font-weight: 500; color: var(--muted); cursor: pointer; padding: 6px 0;
+    }
+    .btn-back:hover { color: var(--text); }
+
+    /* ── EMOTION ── */
+    .emotion-headline {
+      font-size: 1.7rem; font-weight: 700; color: var(--text);
+      letter-spacing: -0.03em; line-height: 1.4; padding-top: 30px;
+    }
+    .emotion-date-badge {
+      display: inline-block; margin-top: 8px; padding: 4px 12px;
+      background: var(--card); border: 1.5px solid var(--border);
+      border-radius: 999px; font-size: 0.78rem; color: var(--muted); font-weight: 500;
+    }
+    .mood-pal { display: grid; grid-template-columns: repeat(4,1fr); gap: 10px; margin-top: 22px; }
+    .mood-item {
+      aspect-ratio: 1; border-radius: 16px; cursor: pointer;
+      border: 2.5px solid transparent; background: var(--card); padding: 10px;
+      transition: border-color 0.15s, transform 0.12s, background 0.15s; overflow: hidden;
+    }
+    .mood-item svg { width: 100%; height: 100%; display: block; }
+    .mood-item:hover { background: var(--card2); }
+    .mood-item.selected { transform: scale(1.06); }
+    .btn-skip {
+      display: block; text-align: center; margin-top: 16px; background: none; border: none;
+      font-family: inherit; font-size: 0.83rem; color: var(--muted); cursor: pointer; padding: 8px;
+      text-decoration: underline; text-underline-offset: 3px;
+    }
+    .btn-skip:hover { color: var(--text); }
+
+    /* ── WRITE ── */
+    .write-topbar {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 24px 28px 0; max-width: var(--max-w); margin: 0 auto;
+    }
+    .write-blob-pill { width: 48px; height: 48px; flex-shrink: 0; }
+    .write-date { max-width: var(--max-w); margin: 20px auto 0; padding: 0 28px; }
+    .write-date-display { font-size: 0.88rem; font-weight: 600; color: var(--muted); letter-spacing: 0.02em; }
+    .write-area { max-width: var(--max-w); margin: 10px auto 0; padding: 0 28px; }
+    .diary-textarea {
+      width: 100%; min-height: 320px; background: none; border: none; outline: none;
+      resize: none; font-family: inherit; font-size: 1.12rem; font-weight: 400;
+      line-height: 2.2; color: var(--text); caret-color: var(--ink); overflow: hidden;
+    }
+    .diary-textarea::placeholder { color: #C5B8A8; }
+    .write-footer {
+      position: fixed; bottom: 0; left: 0; right: 0;
+      background: rgba(237,229,216,.92); backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px); border-top: 1px solid var(--border); padding: 14px 20px;
+      display: flex; justify-content: center;
+    }
+    .write-footer-inner { width: 100%; max-width: var(--max-w); }
+    .btn-save {
+      width: 100%; padding: 15px; background: var(--text); color: #F5EFE4;
+      border: none; border-radius: var(--radius-sm); font-family: inherit;
+      font-size: 0.97rem; font-weight: 700; cursor: pointer; transition: opacity 0.15s;
+    }
+    .btn-save:hover { opacity: 0.85; }
+
+    /* ── DONE ── */
+    .done-wrap { display: flex; flex-direction: column; align-items: center; text-align: center; padding-top: 80px; }
+    .done-check {
+      width: 58px; height: 58px; border-radius: 50%; background: var(--text);
+      display: flex; align-items: center; justify-content: center;
+      animation: popIn 0.4s cubic-bezier(.34,1.56,.64,1);
+    }
+    .done-check svg { width: 26px; height: 26px; }
+    @keyframes popIn { from { transform: scale(0); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+    @keyframes fadeUp { from { opacity:0; transform:translateY(14px); } to { opacity:1; transform:translateY(0); } }
+    .done-title { font-size: 1.3rem; font-weight: 700; color: var(--text); margin-top: 18px; letter-spacing: -0.02em; }
+    .done-sub { font-size: 0.86rem; color: var(--muted); margin-top: 5px; }
+    .done-blob { width: 96px; height: 96px; margin: 24px auto 0; animation: fadeUp 0.4s ease 0.1s both; }
+    .done-card {
+      background: var(--card); border-radius: var(--radius); box-shadow: var(--shadow-lg);
+      padding: 20px 22px; margin-top: 16px; width: calc(100% - 40px); text-align: left;
+      animation: fadeUp 0.4s ease 0.2s both;
+    }
+    .done-card-date { font-size: 0.75rem; color: var(--muted); font-weight: 500; display: block; margin-bottom: 8px; }
+    .done-card-content {
+      font-size: 0.9rem; color: var(--text); line-height: 1.75;
+      display: -webkit-box; -webkit-line-clamp: 3; line-clamp: 3;
+      -webkit-box-orient: vertical; overflow: hidden;
+    }
+    .btn-go-cal {
+      margin-top: 20px; width: calc(100% - 40px); padding: 14px;
+      background: var(--card); border: 1.5px solid var(--border); border-radius: var(--radius-sm);
+      font-family: inherit; font-size: 0.92rem; font-weight: 600; color: var(--muted);
+      cursor: pointer; transition: border-color 0.15s, color 0.15s;
+    }
+    .btn-go-cal:hover { border-color: var(--ink); color: var(--text); }
+    .done-timer { font-size: 0.76rem; color: #C5B8A8; margin-top: 12px; }
+
+    /* ── HISTORY ── */
+    .hist-search-wrap { position: relative; margin-top: 18px; }
+    .hist-search {
+      width: 100%; padding: 12px 16px 12px 40px; background: var(--card);
+      border: 1.5px solid var(--border); border-radius: var(--radius-sm);
+      box-shadow: var(--shadow); font-family: inherit; font-size: 0.92rem;
+      color: var(--text); outline: none; transition: border-color 0.2s;
+    }
+    .hist-search:focus { border-color: var(--ink); }
+    .hist-search::placeholder { color: #C5B8A8; }
+    .hist-search-icon {
+      position: absolute; left: 13px; top: 50%; transform: translateY(-50%);
+      width: 16px; height: 16px; color: var(--muted); pointer-events: none;
+    }
+    .stats-row { display: flex; gap: 10px; margin-top: 14px; }
+    .stat-chip { flex: 1; background: var(--card); border-radius: var(--radius-sm); box-shadow: var(--shadow); padding: 14px 16px; text-align: center; }
+    .stat-chip-num { font-size: 1.5rem; font-weight: 700; color: var(--text); line-height: 1; }
+    .stat-chip-label { font-size: 0.72rem; color: var(--muted); margin-top: 4px; }
+    .chart-compact { margin-top: 14px; }
+    .chart-row { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+    .chart-blob { width: 32px; height: 32px; flex-shrink: 0; }
+    .chart-bar-wrap { flex: 1; height: 6px; background: var(--border); border-radius: 999px; overflow: hidden; }
+    .chart-bar { height: 100%; border-radius: 999px; transition: width 0.5s ease; }
+    .chart-cnt { font-size: 0.72rem; color: var(--muted); width: 20px; text-align: right; flex-shrink: 0; }
+    .h-section-title { font-size: 0.72rem; font-weight: 700; color: var(--muted); letter-spacing: 0.05em; text-transform: uppercase; margin: 18px 0 10px; }
+    .h-entry-card {
+      background: var(--card); border-radius: var(--radius-sm); box-shadow: var(--shadow);
+      padding: 14px 16px; margin-bottom: 10px; cursor: pointer; position: relative;
+      transition: box-shadow 0.15s; display: flex; gap: 12px; align-items: flex-start;
+    }
+    .h-entry-card:hover { box-shadow: var(--shadow-lg); }
+    .h-entry-blob { width: 46px; height: 46px; flex-shrink: 0; }
+    .h-entry-body { flex: 1; min-width: 0; padding-right: 22px; }
+    .h-entry-date { font-size: 0.72rem; color: var(--muted); font-weight: 500; display: block; margin-bottom: 3px; }
+    .h-entry-text {
+      font-size: 0.88rem; color: var(--text); line-height: 1.65;
+      display: -webkit-box; -webkit-line-clamp: 2; line-clamp: 2;
+      -webkit-box-orient: vertical; overflow: hidden;
+    }
+    .h-entry-card.expanded .h-entry-text { display: block; -webkit-line-clamp: unset; line-clamp: unset; overflow: visible; }
+    .h-btn-delete {
+      position: absolute; top: 12px; right: 12px; background: none; border: none;
+      color: var(--border); font-size: 0.8rem; cursor: pointer; padding: 4px 6px;
+      border-radius: 6px; font-family: inherit; transition: color 0.15s;
+    }
+    .h-btn-delete:hover { color: #C0392B; }
+    .empty-state { text-align: center; padding: 40px 0; color: var(--muted); font-size: 0.88rem; line-height: 1.7; }
+    .hist-link { background: none; border: none; font-family: inherit; font-size: 0.8rem; color: var(--muted); cursor: pointer; text-decoration: underline; text-underline-offset: 3px; padding: 0; }
+    .hist-link:hover { color: var(--text); }
+  </style>
+</head>
+<body>
+
+<!-- 수채화 SVG 필터 -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <filter id="mcw1" x="-40%" y="-40%" width="180%" height="180%">
+      <feTurbulence type="fractalNoise" baseFrequency="0.02" numOctaves="3" seed="7" result="n"/>
+      <feDisplacementMap in="SourceGraphic" in2="n" scale="11"/>
+      <feGaussianBlur stdDeviation="0.7"/>
+    </filter>
+    <filter id="mcw2" x="-40%" y="-40%" width="180%" height="180%">
+      <feTurbulence type="fractalNoise" baseFrequency="0.025" numOctaves="3" seed="23" result="n"/>
+      <feDisplacementMap in="SourceGraphic" in2="n" scale="13"/>
+      <feGaussianBlur stdDeviation="0.7"/>
+    </filter>
+    <filter id="mcw3" x="-40%" y="-40%" width="180%" height="180%">
+      <feTurbulence type="fractalNoise" baseFrequency="0.017" numOctaves="3" seed="42" result="n"/>
+      <feDisplacementMap in="SourceGraphic" in2="n" scale="9"/>
+      <feGaussianBlur stdDeviation="0.7"/>
+    </filter>
+  </defs>
+</svg>
+
+<div id="app">
+
+  <!-- ══ AUTH ══ -->
+  <div class="screen state-center" id="screen-auth">
+    <div class="auth-wrap">
+      <div class="auth-logo">
+        <div class="auth-logo-title">감정 일기</div>
+        <span class="auth-logo-sub">오늘의 기분을 기록해요</span>
+      </div>
+      <div class="auth-tab-row">
+        <button class="auth-tab active" id="tabLogin" onclick="switchAuthTab('login')">로그인</button>
+        <button class="auth-tab" id="tabSignup" onclick="switchAuthTab('signup')">회원가입</button>
+      </div>
+      <div id="formLogin">
+        <div class="auth-field"><label class="auth-label">아이디</label><input class="auth-input" id="loginId" type="text" placeholder="아이디 입력" autocomplete="username"/></div>
+        <div class="auth-field"><label class="auth-label">비밀번호</label><input class="auth-input" id="loginPw" type="password" placeholder="비밀번호 입력" autocomplete="current-password"/></div>
+        <div class="auth-error" id="loginErr"></div>
+        <button class="btn-auth" id="btnLogin">로그인</button>
+      </div>
+      <div id="formSignup" style="display:none">
+        <div class="auth-field"><label class="auth-label">이름</label><input class="auth-input" id="signupName" type="text" placeholder="이름 입력"/></div>
+        <div class="auth-field"><label class="auth-label">아이디</label><input class="auth-input" id="signupId" type="text" placeholder="아이디 입력" autocomplete="username"/></div>
+        <div class="auth-field"><label class="auth-label">비밀번호</label><input class="auth-input" id="signupPw" type="password" placeholder="비밀번호 입력" autocomplete="new-password"/></div>
+        <div class="auth-error" id="signupErr"></div>
+        <button class="btn-auth" id="btnSignup">가입하기</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ MAIN CALENDAR ══ -->
+  <div class="screen state-right" id="screen-cal">
+    <div class="cal-header">
+      <div>
+        <div class="cal-user-greeting" id="calGreeting">안녕하세요</div>
+        <div class="cal-user-sub" id="calUserSub"></div>
+      </div>
+      <div class="cal-header-right">
+        <span class="streak-pill" id="calStreak"></span>
+        <button class="btn-logout" id="btnLogout">로그아웃</button>
+      </div>
+    </div>
+
+    <div class="cal-month-nav">
+      <button class="cal-nav-btn" id="calPrev">←</button>
+      <span class="cal-month-title" id="calMonthTitle"></span>
+      <button class="cal-nav-btn" id="calNext">→</button>
+    </div>
+
+    <div class="cal-grid-wrap">
+      <div class="cal-dow-row">
+        <div class="cal-dow">일</div><div class="cal-dow">월</div>
+        <div class="cal-dow">화</div><div class="cal-dow">수</div>
+        <div class="cal-dow">목</div><div class="cal-dow">금</div>
+        <div class="cal-dow">토</div>
+      </div>
+      <div class="cal-day-row" id="calDayRow"></div>
+    </div>
+
+    <button class="cal-new-btn" id="btnNewEntry">오늘 기록하기</button>
+    <div id="calEntryCard" style="display:none;margin-bottom:4px"></div>
+
+    <div style="text-align:center;padding:14px 0 20px">
+      <button class="hist-link" id="btnOpenHistory">지난 기록 / 검색 →</button>
+    </div>
+  </div>
+
+  <!-- ══ EMOTION SELECT ══ -->
+  <div class="screen state-right" id="screen-emotion">
+    <div class="topbar"><button class="btn-back" id="btnBackFromEmotion">← 뒤로</button></div>
+    <div class="inner">
+      <div class="emotion-headline">오늘 기분이<br>어때요?</div>
+      <div class="emotion-date-badge" id="emotionDateBadge"></div>
+      <div class="mood-pal" id="moodPal"></div>
+      <button class="btn-skip" id="btnSkipEmotion">건너뛰기</button>
+    </div>
+  </div>
+
+  <!-- ══ WRITE ══ -->
+  <div class="screen state-right" id="screen-write">
+    <div class="write-topbar">
+      <button class="btn-back" id="btnBackFromWrite">← 뒤로</button>
+      <div class="write-blob-pill" id="writeBlobPill" style="display:none"></div>
+    </div>
+    <div class="write-date"><div class="write-date-display" id="writeDateDisplay"></div></div>
+    <div class="write-area">
+      <textarea class="diary-textarea" id="diaryTextarea"
+        placeholder="오늘 있었던 일이나 마음속 이야기를 자유롭게 적어보세요."></textarea>
+    </div>
+    <div class="write-footer">
+      <div class="write-footer-inner"><button class="btn-save" id="btnSave">저장하기</button></div>
+    </div>
+  </div>
+
+  <!-- ══ DONE ══ -->
+  <div class="screen state-right" id="screen-done">
+    <div class="inner">
+      <div class="done-wrap">
+        <div class="done-check">
+          <svg viewBox="0 0 24 24" fill="none" stroke="#F5EFE4" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="20 6 9 17 4 12"/>
+          </svg>
+        </div>
+        <div class="done-title">저장됐어요</div>
+        <div class="done-sub">오늘의 이야기를 기록했어요.</div>
+        <div class="done-blob" id="doneBlobEl" style="display:none"></div>
+        <div class="done-card" id="doneCard" style="display:none"></div>
+        <button class="btn-go-cal" id="btnGoCal">캘린더로 돌아가기</button>
+        <div class="done-timer" id="doneTimer"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ HISTORY ══ -->
+  <div class="screen state-right" id="screen-history">
+    <div class="topbar">
+      <button class="btn-back" id="btnBackFromHistory">← 뒤로</button>
+      <span class="topbar-title">기록</span>
+      <span style="width:48px"></span>
+    </div>
+    <div class="inner">
+      <div class="hist-search-wrap">
+        <svg class="hist-search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+        </svg>
+        <input type="text" class="hist-search" id="histSearch" placeholder="날짜 또는 내용 검색..."/>
+      </div>
+      <div class="stats-row">
+        <div class="stat-chip"><div class="stat-chip-num" id="hStatStreak">0</div><div class="stat-chip-label">연속 기록</div></div>
+        <div class="stat-chip"><div class="stat-chip-num" id="hStatTotal">0</div><div class="stat-chip-label">총 기록 수</div></div>
+      </div>
+      <div class="chart-compact" id="hChart"></div>
+      <div class="h-section-title" id="hListTitle"></div>
+      <div id="hEntryList"></div>
+    </div>
+  </div>
+
+</div><!-- #app -->
+
+<script>
+  /* ══ WATERCOLOR DATA ══ */
+  const INK = "#5E4B45";
+  const COLORS = [
+    "#F2A9C4","#AFD98C","#9AA0E8","#F4D84F","#93D9D1",
+    "#F2A3AC","#C9A8E8","#F6B97A","#A8D4F0","#BFE3A8",
+  ];
+  const FACES = [
+    `<circle cx="40" cy="45" r="2.6" fill="${INK}"/><circle cx="60" cy="45" r="2.6" fill="${INK}"/><path d="M41 57 Q50 66 59 57" stroke="${INK}" stroke-width="3" fill="none" stroke-linecap="round"/>`,
+    `<path d="M31 43 L39 46.5 L31 50" stroke="${INK}" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round"/><path d="M69 43 L61 46.5 L69 50" stroke="${INK}" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round"/><path d="M39 56 Q50 69 61 56" stroke="${INK}" stroke-width="3" fill="none" stroke-linecap="round"/>`,
+    `<path d="M33 46 Q39 51 45 46" stroke="${INK}" stroke-width="3" fill="none" stroke-linecap="round"/><path d="M55 46 Q61 51 67 46" stroke="${INK}" stroke-width="3" fill="none" stroke-linecap="round"/><path d="M43 59 Q50 64 57 59" stroke="${INK}" stroke-width="3" fill="none" stroke-linecap="round"/>`,
+    `<path d="M33 48 Q39 42 45 48" stroke="${INK}" stroke-width="3" fill="none" stroke-linecap="round"/><path d="M55 48 Q61 42 67 48" stroke="${INK}" stroke-width="3" fill="none" stroke-linecap="round"/><path d="M43 58 Q50 63 57 58" stroke="${INK}" stroke-width="3" fill="none" stroke-linecap="round"/>`,
+    `<path d="M34 49 Q40 45 46 49" stroke="${INK}" stroke-width="2.6" fill="none" stroke-linecap="round"/><path d="M54 49 Q60 45 66 49" stroke="${INK}" stroke-width="2.6" fill="none" stroke-linecap="round"/><path d="M42 61 Q45.5 58 49 61 Q52.5 64 56 61" stroke="${INK}" stroke-width="2.6" fill="none" stroke-linecap="round" stroke-linejoin="round"/><path d="M73 36 Q70 42 73 45 Q76 42 73 36 Z" fill="#BFE3F2"/>`,
+    `<circle cx="40" cy="46" r="2.6" fill="${INK}"/><circle cx="60" cy="46" r="2.6" fill="${INK}"/><path d="M42 60 L58 60" stroke="${INK}" stroke-width="3" fill="none" stroke-linecap="round"/>`,
+    `<circle cx="40" cy="45" r="2.6" fill="${INK}"/><circle cx="60" cy="45" r="2.6" fill="${INK}"/><path d="M44 58 Q50 63 56 58" stroke="${INK}" stroke-width="2.8" fill="none" stroke-linecap="round"/><ellipse cx="32" cy="55" rx="6.5" ry="4.2" fill="#EE9AAE" opacity="0.55"/><ellipse cx="68" cy="55" rx="6.5" ry="4.2" fill="#EE9AAE" opacity="0.55"/>`,
+    `<path transform="translate(40,45)" d="M0 4 C-1.5 1.5 -7 0 -7 -4 C-7 -7 -3 -7.5 0 -4 C3 -7.5 7 -7 7 -4 C7 0 1.5 1.5 0 4 Z" fill="#EA6580"/><path transform="translate(60,45)" d="M0 4 C-1.5 1.5 -7 0 -7 -4 C-7 -7 -3 -7.5 0 -4 C3 -7.5 7 -7 7 -4 C7 0 1.5 1.5 0 4 Z" fill="#EA6580"/><path d="M41 57 Q50 66 59 57" stroke="${INK}" stroke-width="3" fill="none" stroke-linecap="round"/>`,
+    `<circle cx="40" cy="45" r="5" fill="#fff" stroke="${INK}" stroke-width="2.2"/><circle cx="40" cy="46" r="2.4" fill="${INK}"/><circle cx="60" cy="45" r="5" fill="#fff" stroke="${INK}" stroke-width="2.2"/><circle cx="60" cy="46" r="2.4" fill="${INK}"/><ellipse cx="50" cy="61" rx="4.5" ry="5.5" fill="${INK}"/>`,
+    `<path d="M34 46 Q40 49 46 46" stroke="${INK}" stroke-width="2.8" fill="none" stroke-linecap="round"/><path d="M54 46 Q60 49 66 46" stroke="${INK}" stroke-width="2.8" fill="none" stroke-linecap="round"/><ellipse cx="50" cy="60" rx="3" ry="4.5" fill="${INK}"/><text x="66" y="34" font-size="11" fill="#9AA0E8" font-family="sans-serif">z</text><text x="73" y="26" font-size="14" fill="#9AA0E8" font-family="sans-serif">z</text>`,
+    `<path d="M34 46 Q40 41 46 46" stroke="${INK}" stroke-width="3" fill="none" stroke-linecap="round"/><circle cx="60" cy="45" r="2.6" fill="${INK}"/><path d="M41 57 Q50 65 59 57" stroke="${INK}" stroke-width="3" fill="none" stroke-linecap="round"/>`,
+    `<path d="M33 44 Q39 41 45 47" stroke="${INK}" stroke-width="2.4" fill="none" stroke-linecap="round"/><path d="M67 44 Q61 41 55 47" stroke="${INK}" stroke-width="2.4" fill="none" stroke-linecap="round"/><circle cx="40" cy="48" r="2.6" fill="${INK}"/><circle cx="60" cy="48" r="2.6" fill="${INK}"/><path d="M43 62 Q50 57 57 62" stroke="${INK}" stroke-width="2.8" fill="none" stroke-linecap="round"/><path d="M63 51 Q60 57 63 60 Q66 57 63 51 Z" fill="#7FB8E0"/>`,
+    `<path d="M33 43 L45 48" stroke="${INK}" stroke-width="2.8" fill="none" stroke-linecap="round"/><path d="M67 43 L55 48" stroke="${INK}" stroke-width="2.8" fill="none" stroke-linecap="round"/><circle cx="41" cy="50" r="2.4" fill="${INK}"/><circle cx="59" cy="50" r="2.4" fill="${INK}"/><path d="M43 61 Q46.5 58 50 61 Q53.5 64 57 61" stroke="${INK}" stroke-width="2.6" fill="none" stroke-linecap="round" stroke-linejoin="round"/>`,
+    `<path d="M33 45 Q39 49 45 45" stroke="${INK}" stroke-width="2.6" fill="none" stroke-linecap="round"/><path d="M55 45 Q61 49 67 45" stroke="${INK}" stroke-width="2.6" fill="none" stroke-linecap="round"/><path d="M38 49 Q36 58 38 64 Q40 58 38 49 Z" fill="#7FB8E0"/><path d="M62 49 Q60 58 62 64 Q64 58 62 49 Z" fill="#7FB8E0"/><path d="M44 62 Q50 56 56 62" stroke="${INK}" stroke-width="2.6" fill="none" stroke-linecap="round"/>`,
+    `<circle cx="40" cy="45" r="2.6" fill="${INK}"/><circle cx="60" cy="45" r="2.6" fill="${INK}"/><path d="M42 60 Q50 64 60 58" stroke="${INK}" stroke-width="2.8" fill="none" stroke-linecap="round"/>`,
+    `<circle cx="40" cy="45" r="2.6" fill="${INK}"/><circle cx="60" cy="45" r="2.6" fill="${INK}"/><path d="M41 57 Q50 64 59 57" stroke="${INK}" stroke-width="3" fill="none" stroke-linecap="round"/><path d="M50 60 Q46 60 46 64 Q46 67 50 67 Q54 67 54 64 Q54 60 50 60 Z" fill="#EE8FA6"/>`,
+    `<path d="M36 42 L44 50 M44 42 L36 50" stroke="${INK}" stroke-width="2.4" stroke-linecap="round"/><path d="M56 42 L64 50 M64 42 L56 50" stroke="${INK}" stroke-width="2.4" stroke-linecap="round"/><path d="M42 61 Q46 58 50 61 Q54 64 58 61" stroke="${INK}" stroke-width="2.6" fill="none" stroke-linecap="round" stroke-linejoin="round"/>`,
+    `<path d="M33 46 Q39 41 45 46" stroke="${INK}" stroke-width="3" fill="none" stroke-linecap="round"/><path d="M55 46 Q61 41 67 46" stroke="${INK}" stroke-width="3" fill="none" stroke-linecap="round"/><path d="M44 58 Q50 63 56 58" stroke="${INK}" stroke-width="2.8" fill="none" stroke-linecap="round"/><path transform="translate(28,42)" d="M0 -4 L1 -1 L4 0 L1 1 L0 4 L-1 1 L-4 0 L-1 -1 Z" fill="#F4C56A"/><path transform="translate(72,42)" d="M0 -4 L1 -1 L4 0 L1 1 L0 4 L-1 1 L-4 0 L-1 -1 Z" fill="#F4C56A"/>`,
+    `<path d="M34 45 L46 45" stroke="${INK}" stroke-width="2.8" fill="none" stroke-linecap="round"/><path d="M54 45 L66 45" stroke="${INK}" stroke-width="2.8" fill="none" stroke-linecap="round"/><path d="M43 60 L57 60" stroke="${INK}" stroke-width="2.8" fill="none" stroke-linecap="round"/>`,
+    `<path transform="translate(40,45)" d="M0 -6 L1.6 -1.6 L6 0 L1.6 1.6 L0 6 L-1.6 1.6 L-6 0 L-1.6 -1.6 Z" fill="#F4C56A"/><path transform="translate(60,45)" d="M0 -6 L1.6 -1.6 L6 0 L1.6 1.6 L0 6 L-1.6 1.6 L-6 0 L-1.6 -1.6 Z" fill="#F4C56A"/><path d="M39 56 Q50 68 61 56" stroke="${INK}" stroke-width="3" fill="none" stroke-linecap="round"/>`,
+    `<circle cx="42" cy="46" r="1.8" fill="${INK}"/><circle cx="58" cy="46" r="1.8" fill="${INK}"/><circle cx="50" cy="60" r="1.8" fill="${INK}"/>`,
+    `<path d="M33 46 Q39 50 45 46" stroke="${INK}" stroke-width="2.8" fill="none" stroke-linecap="round"/><path d="M55 46 Q61 50 67 46" stroke="${INK}" stroke-width="2.8" fill="none" stroke-linecap="round"/><path d="M44 58 Q50 62 56 58" stroke="${INK}" stroke-width="2.6" fill="none" stroke-linecap="round"/><path d="M70 40 Q67 46 70 49 Q73 46 70 40 Z" fill="#BFE3F2"/>`,
+    `<circle cx="40" cy="46" r="6" fill="#fff" stroke="${INK}" stroke-width="2"/><circle cx="40" cy="47" r="3.2" fill="${INK}"/><circle cx="38.5" cy="45" r="1.3" fill="#fff"/><circle cx="60" cy="46" r="6" fill="#fff" stroke="${INK}" stroke-width="2"/><circle cx="60" cy="47" r="3.2" fill="${INK}"/><circle cx="58.5" cy="45" r="1.3" fill="#fff"/><path d="M44 60 Q50 63 56 60" stroke="${INK}" stroke-width="2.4" fill="none" stroke-linecap="round"/>`,
+    `<path d="M33 47 Q39 43 45 47" stroke="${INK}" stroke-width="2.8" fill="none" stroke-linecap="round"/><path d="M55 47 Q61 43 67 47" stroke="${INK}" stroke-width="2.8" fill="none" stroke-linecap="round"/><path d="M41 58 Q50 64 60 57" stroke="${INK}" stroke-width="2.8" fill="none" stroke-linecap="round"/>`,
+    `<path d="M34 46 Q40 41 46 46" stroke="${INK}" stroke-width="3" fill="none" stroke-linecap="round"/><circle cx="60" cy="45" r="2.6" fill="${INK}"/><path transform="translate(50,62) scale(0.6)" d="M0 4 C-1.5 1.5 -7 0 -7 -4 C-7 -7 -3 -7.5 0 -4 C3 -7.5 7 -7 7 -4 C7 0 1.5 1.5 0 4 Z" fill="#EA6580"/>`,
+    `<circle cx="40" cy="45" r="2.6" fill="${INK}"/><circle cx="60" cy="45" r="2.6" fill="${INK}"/><path d="M33 40 Q39 38 44 41" stroke="${INK}" stroke-width="2" fill="none" stroke-linecap="round"/><path d="M67 40 Q61 38 56 41" stroke="${INK}" stroke-width="2" fill="none" stroke-linecap="round"/><path d="M43 61 Q47 58 50 61 Q53 64 57 61" stroke="${INK}" stroke-width="2.4" fill="none" stroke-linecap="round" stroke-linejoin="round"/>`,
+    `<path d="M33 41 L45 43" stroke="${INK}" stroke-width="2.4" stroke-linecap="round"/><path d="M67 41 L55 43" stroke="${INK}" stroke-width="2.4" stroke-linecap="round"/><circle cx="40" cy="47" r="2.6" fill="${INK}"/><circle cx="60" cy="47" r="2.6" fill="${INK}"/><path d="M44 60 L56 60" stroke="${INK}" stroke-width="3" fill="none" stroke-linecap="round"/>`,
+    `<path d="M33 46 Q39 41 45 46" stroke="${INK}" stroke-width="3" fill="none" stroke-linecap="round"/><path d="M55 46 Q61 41 67 46" stroke="${INK}" stroke-width="3" fill="none" stroke-linecap="round"/><path d="M40 56 Q50 67 60 56" stroke="${INK}" stroke-width="3" fill="none" stroke-linecap="round"/><ellipse cx="31" cy="54" rx="5.5" ry="3.6" fill="#EE9AAE" opacity="0.5"/><ellipse cx="69" cy="54" rx="5.5" ry="3.6" fill="#EE9AAE" opacity="0.5"/>`,
+    `<path d="M33 46 Q39 50 45 46" stroke="${INK}" stroke-width="2.8" fill="none" stroke-linecap="round"/><path d="M55 46 Q61 50 67 46" stroke="${INK}" stroke-width="2.8" fill="none" stroke-linecap="round"/><path d="M43 58 Q50 62 57 58" stroke="${INK}" stroke-width="2.6" fill="none" stroke-linecap="round"/><path d="M55 60 Q62 60 60 65" stroke="#EE8FA6" stroke-width="3" fill="none" stroke-linecap="round"/>`,
+    `<path d="M30 44 L70 44" stroke="${INK}" stroke-width="1.6"/><rect x="32" y="42" width="13" height="9" rx="3" fill="${INK}"/><rect x="55" y="42" width="13" height="9" rx="3" fill="${INK}"/><path d="M42 60 Q50 65 58 60" stroke="${INK}" stroke-width="2.8" fill="none" stroke-linecap="round"/>`,
+    `<path d="M31 43 L39 46.5 L31 50" stroke="${INK}" stroke-width="2.8" fill="none" stroke-linecap="round" stroke-linejoin="round"/><circle cx="60" cy="46" r="2.6" fill="${INK}"/><path d="M41 57 Q50 63 59 57" stroke="${INK}" stroke-width="2.8" fill="none" stroke-linecap="round"/><path d="M52 60 Q48 60 48 64 Q48 67 52 67 Q56 67 56 64 Q56 60 52 60 Z" fill="#EE8FA6"/>`,
+    `<circle cx="40" cy="45" r="6" fill="#fff" stroke="${INK}" stroke-width="2"/><path transform="translate(40,45) scale(0.7)" d="M0 -5 L1.4 -1.4 L5 0 L1.4 1.4 L0 5 L-1.4 1.4 L-5 0 L-1.4 -1.4 Z" fill="#F4C56A"/><circle cx="60" cy="45" r="6" fill="#fff" stroke="${INK}" stroke-width="2"/><path transform="translate(60,45) scale(0.7)" d="M0 -5 L1.4 -1.4 L5 0 L1.4 1.4 L0 5 L-1.4 1.4 L-5 0 L-1.4 -1.4 Z" fill="#F4C56A"/><path d="M40 57 Q50 67 60 57" stroke="${INK}" stroke-width="3" fill="none" stroke-linecap="round"/>`,
+  ];
+
+  /* ══ BLOB ══ */
+  function blobSVG(index, seed, w, h) {
+    const color = COLORS[index % COLORS.length];
+    const filt  = ['mcw1','mcw2','mcw3'][seed % 3];
+    const inner =
+      `<g filter="url(#${filt})">` +
+      `<ellipse cx="50" cy="52" rx="35" ry="32" fill="${color}" opacity="0.88"/>` +
+      `<ellipse cx="45" cy="47" rx="23" ry="20" fill="${color}" opacity="0.4"/>` +
+      `</g>${FACES[index]}`;
+    return `<svg viewBox="0 0 100 100" width="${w||'100%'}" height="${h||'100%'}" style="display:block">${inner}</svg>`;
+  }
+
+  /* ══ AUTH ══ */
+  let currentUser = null;
+
+  function loadUsers() { return JSON.parse(localStorage.getItem('diary_users') || '{}'); }
+  function saveUsers(u) { localStorage.setItem('diary_users', JSON.stringify(u)); }
+
+  function register(name, username, pw) {
+    if (!name.trim() || !username.trim() || !pw.trim()) return '모든 항목을 입력해주세요.';
+    const users = loadUsers();
+    if (users[username]) return '이미 사용 중인 아이디예요.';
+    users[username] = { name: name.trim(), pw };
+    saveUsers(users);
+    return null;
+  }
+
+  function login(username, pw) {
+    const users = loadUsers();
+    if (!users[username]) return '존재하지 않는 아이디예요.';
+    if (users[username].pw !== pw) return '비밀번호가 맞지 않아요.';
+    currentUser = { username, name: users[username].name };
+    localStorage.setItem('diary_session', JSON.stringify(currentUser));
+    return null;
+  }
+
+  function logout() {
+    currentUser = null;
+    localStorage.removeItem('diary_session');
+    document.querySelectorAll('.screen').forEach(s => s.classList.remove('state-center','state-left','state-right'));
+    document.getElementById('screen-auth').classList.add('state-center');
+    document.querySelectorAll('.screen:not(#screen-auth)').forEach(s => s.classList.add('state-right'));
+    stack.length = 0;
+    document.getElementById('loginId').value = '';
+    document.getElementById('loginPw').value = '';
+    document.getElementById('loginErr').textContent = '';
+    switchAuthTab('login');
+  }
+
+  function switchAuthTab(tab) {
+    document.getElementById('tabLogin').classList.toggle('active',  tab==='login');
+    document.getElementById('tabSignup').classList.toggle('active', tab==='signup');
+    document.getElementById('formLogin').style.display  = tab==='login'  ? 'block' : 'none';
+    document.getElementById('formSignup').style.display = tab==='signup' ? 'block' : 'none';
+  }
+
+  function afterLogin() {
+    initCalendar();
+    document.getElementById('screen-auth').classList.replace('state-center','state-left');
+    document.getElementById('screen-cal').classList.replace('state-right','state-center');
+    stack.length = 0; stack.push('cal');
+  }
+
+  function checkSession() {
+    const s = localStorage.getItem('diary_session');
+    if (s) {
+      try { currentUser = JSON.parse(s); afterLogin(); return; }
+      catch { localStorage.removeItem('diary_session'); }
+    }
+  }
+
+  /* ══ DATA ══ */
+  function load() {
+    if (!currentUser) return [];
+    return JSON.parse(localStorage.getItem('diary_entries_' + currentUser.username) || '[]');
+  }
+  function save(d) {
+    if (!currentUser) return;
+    localStorage.setItem('diary_entries_' + currentUser.username, JSON.stringify(d));
+  }
+  function esc(t) { return t.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+  /* ══ STREAK ══ */
+  function calcStreak() {
+    const dates = [...new Set(load().map(e => e.date))].sort();
+    if (!dates.length) return 0;
+    const today = new Date().toISOString().split('T')[0];
+    if ((new Date(today) - new Date(dates[dates.length-1])) / 86400000 > 1) return 0;
+    let cur = 1;
+    for (let i = dates.length-1; i > 0; i--) {
+      if ((new Date(dates[i]) - new Date(dates[i-1])) / 86400000 === 1) cur++;
+      else break;
+    }
+    return cur;
+  }
+
+  /* ══ SCREEN NAV ══ */
+  const stack = [];
+
+  function showScreen(id, dir) {
+    const target  = document.getElementById('screen-'+id);
+    const current = document.querySelector('.screen.state-center');
+    if (current === target) return;
+    if (dir === 'back') {
+      current && current.classList.replace('state-center','state-right');
+      target.classList.remove('state-left','state-right');
+      target.classList.add('state-center');
+    } else {
+      current && current.classList.replace('state-center','state-left');
+      target.classList.remove('state-left','state-right');
+      target.classList.add('state-center');
+      stack.push(id);
+    }
+  }
+
+  function goBack() {
+    stack.pop();
+    showScreen(stack[stack.length-1] || 'cal', 'back');
+  }
+
+  function goCalendar() {
+    if (doneTimer) clearInterval(doneTimer);
+    document.querySelectorAll('.screen').forEach(s => s.classList.remove('state-center','state-left','state-right'));
+    document.getElementById('screen-cal').classList.add('state-center');
+    document.querySelectorAll('.screen:not(#screen-cal)').forEach(s => s.classList.add('state-right'));
+    stack.length = 0; stack.push('cal');
+    renderCalendar();
+  }
+
+  /* ══ MAIN CALENDAR ══ */
+  let calYear, calMonth;
+
+  function initCalendar() {
+    const now = new Date();
+    calYear = now.getFullYear(); calMonth = now.getMonth();
+    const h = now.getHours();
+    const n = currentUser ? currentUser.name : '';
+    document.getElementById('calGreeting').textContent =
+      h < 11 ? `좋은 아침이에요, ${n}` :
+      h < 16 ? `안녕하세요, ${n}` :
+      h < 20 ? `좋은 저녁이에요, ${n}` : `수고하셨어요, ${n}`;
+    document.getElementById('calUserSub').textContent =
+      `${now.getFullYear()}년 ${now.getMonth()+1}월 ${now.getDate()}일`;
+    renderCalendar();
+  }
+
+  function renderCalendar() {
+    const s = calcStreak();
+    document.getElementById('calStreak').textContent = s > 0 ? `🔥 ${s}일 연속` : '첫 기록을 남겨봐요';
+    document.getElementById('calMonthTitle').textContent = `${calYear}년 ${calMonth+1}월`;
+
+    const entries = load();
+    const byDate  = {};
+    entries.forEach(e => { byDate[e.date] = e; });
+
+    const todayStr = new Date().toISOString().split('T')[0];
+    const firstDay = new Date(calYear, calMonth, 1).getDay();
+    const lastDate = new Date(calYear, calMonth+1, 0).getDate();
+
+    let html = '';
+    for (let i = 0; i < firstDay; i++) html += `<div class="cal-cell empty"></div>`;
+
+    for (let d = 1; d <= lastDate; d++) {
+      const ds = `${calYear}-${String(calMonth+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+      const entry   = byDate[ds];
+      const isToday = ds === todayStr;
+      const isFuture = ds > todayStr;
+      const hasEntry = !!entry;
+      const hasBlob  = hasEntry && entry.moodIndex !== undefined && entry.moodIndex !== null;
+
+      let cls = 'cal-cell';
+      if (hasEntry)  cls += ' has-entry';
+      if (!hasEntry && !isFuture) cls += ' no-entry-day';
+      if (isToday)   cls += ' today';
+      if (isFuture)  cls += ' future-day';
+
+      const clickable = hasEntry || (!isFuture);
+      const handler   = hasEntry ? `onCalDayClick('${ds}')` : `onCalNewEntry('${ds}')`;
+
+      html += `<button class="${cls}" ${clickable && !isFuture ? `onclick="${handler}"` : 'disabled'}>
+        ${hasBlob ? `<div class="cell-blob">${blobSVG(entry.moodIndex, d)}</div>` : ''}
+        <span class="cell-num">${d}</span>
+      </button>`;
+    }
+    document.getElementById('calDayRow').innerHTML = html;
+    document.getElementById('calEntryCard').style.display = 'none';
+    document.getElementById('calEntryCard').innerHTML = '';
+  }
+
+  function onCalDayClick(ds) {
+    const entry = load().find(e => e.date === ds);
+    if (!entry) return;
+    const hasBlob = entry.moodIndex !== undefined && entry.moodIndex !== null;
+    const wrap = document.getElementById('calEntryCard');
+    wrap.style.display = 'block';
+    wrap.innerHTML = `<div class="cal-entry-card-wrap">
+      ${hasBlob ? `<div class="cal-entry-blob">${blobSVG(entry.moodIndex, 0)}</div>` : ''}
+      <div style="flex:1;min-width:0">
+        <div class="cal-entry-date">${ds}</div>
+        <p class="cal-entry-text">${esc(entry.content)}</p>
+      </div>
+    </div>`;
+    wrap.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  }
+
+  function onCalNewEntry(ds) {
+    selectedDate = ds;
+    initMoodScreen();
+    showScreen('emotion');
+  }
+
+  /* ══ MOOD SELECT ══ */
+  let selectedMoodIndex = null;
+  let selectedDate = '';
+
+  function initMoodScreen() {
+    selectedMoodIndex = null;
+    document.getElementById('emotionDateBadge').textContent = selectedDate;
+    const pal = document.getElementById('moodPal');
+    pal.innerHTML = FACES.map((_, i) => `
+      <div class="mood-item" onclick="selectMood(${i}, this)" style="border-color:transparent">
+        ${blobSVG(i, i)}
+      </div>`).join('');
+  }
+
+  function selectMood(idx, el) {
+    selectedMoodIndex = idx;
+    document.querySelectorAll('.mood-item').forEach(c => {
+      c.classList.remove('selected'); c.style.borderColor = 'transparent';
+    });
+    el.classList.add('selected');
+    el.style.borderColor = COLORS[idx % COLORS.length];
+    setTimeout(goToWrite, 220);
+  }
+
+  /* ══ WRITE ══ */
+  function goToWrite() {
+    const pill = document.getElementById('writeBlobPill');
+    if (selectedMoodIndex !== null) {
+      pill.innerHTML = blobSVG(selectedMoodIndex, 0);
+      pill.style.display = 'block';
+    } else { pill.style.display = 'none'; }
+    document.getElementById('writeDateDisplay').textContent = selectedDate;
+    const ta = document.getElementById('diaryTextarea');
+    ta.value = '';
+    ta.style.height = '';
+    showScreen('write');
+  }
+
+  const ta = document.getElementById('diaryTextarea');
+  ta.addEventListener('input', function() {
+    this.style.height = 'auto';
+    this.style.height = this.scrollHeight + 'px';
+  });
+
+  document.getElementById('btnSave').addEventListener('click', () => {
+    const content = ta.value.trim();
+    if (!content) { ta.focus(); return; }
+    const entries = load();
+    const existing = entries.findIndex(e => e.date === selectedDate);
+    if (existing >= 0) entries.splice(existing, 1);
+    entries.push({ date: selectedDate, moodIndex: selectedMoodIndex, content });
+    save(entries);
+    showDone({ date: selectedDate, moodIndex: selectedMoodIndex, content });
+  });
+
+  /* ══ DONE ══ */
+  let doneTimer = null;
+
+  function showDone(entry) {
+    const blobEl = document.getElementById('doneBlobEl');
+    if (entry.moodIndex !== null && entry.moodIndex !== undefined) {
+      blobEl.innerHTML = blobSVG(entry.moodIndex, 0);
+      blobEl.style.display = 'block';
+    } else { blobEl.style.display = 'none'; }
+    const card = document.getElementById('doneCard');
+    card.innerHTML = `<span class="done-card-date">${entry.date}</span><p class="done-card-content">${esc(entry.content)}</p>`;
+    card.style.display = 'block';
+    showScreen('done');
+    let n = 3;
+    const timerEl = document.getElementById('doneTimer');
+    timerEl.textContent = `${n}초 후 캘린더로 이동해요`;
+    if (doneTimer) clearInterval(doneTimer);
+    doneTimer = setInterval(() => {
+      n--;
+      if (n <= 0) { clearInterval(doneTimer); goCalendar(); }
+      else timerEl.textContent = `${n}초 후 캘린더로 이동해요`;
+    }, 1000);
+  }
+
+  /* ══ HISTORY ══ */
+  function openHistory() {
+    const entries = load();
+    document.getElementById('hStatStreak').textContent = calcStreak();
+    document.getElementById('hStatTotal').textContent  = entries.length;
+    renderHistChart(entries);
+    renderHistList(entries, '');
+    showScreen('history');
+  }
+
+  function renderHistChart(entries) {
+    const now = new Date();
+    const ms  = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
+    const month = entries.filter(e => e.date.startsWith(ms));
+    const el  = document.getElementById('hChart');
+    if (!month.length) { el.innerHTML = ''; return; }
+    const counts = {};
+    month.forEach(e => { const k = (e.moodIndex!=null) ? e.moodIndex : -1; counts[k]=(counts[k]||0)+1; });
+    const sorted = Object.entries(counts).sort((a,b)=>b[1]-a[1]).slice(0,5);
+    const max = sorted[0][1];
+    el.innerHTML = sorted.map(([idx,cnt]) => {
+      const i = parseInt(idx);
+      const col = i>=0 ? COLORS[i%COLORS.length] : '#9A8878';
+      return `<div class="chart-row">
+        <div class="chart-blob">${i>=0 ? blobSVG(i,0) : ''}</div>
+        <div class="chart-bar-wrap"><div class="chart-bar" style="width:${(cnt/max*100).toFixed(1)}%;background:${col}"></div></div>
+        <span class="chart-cnt">${cnt}</span>
+      </div>`;
+    }).join('');
+  }
+
+  function renderHistList(entries, kw) {
+    const filtered = kw ? entries.filter(e => e.content.includes(kw)||e.date.includes(kw)) : entries;
+    document.getElementById('hListTitle').textContent = kw ? `"${kw}" 검색 결과` : '전체 기록';
+    const list = document.getElementById('hEntryList');
+    if (!filtered.length) { list.innerHTML = `<div class="empty-state">${kw?'검색 결과가 없어요.':'아직 기록이 없어요.'}</div>`; return; }
+    list.innerHTML = filtered.slice().reverse().map(entry => {
+      const origIdx = entries.lastIndexOf(entry);
+      const hasBlob = entry.moodIndex !== undefined && entry.moodIndex !== null;
+      return `<div class="h-entry-card" onclick="toggleEntry(this)">
+        ${hasBlob ? `<div class="h-entry-blob">${blobSVG(entry.moodIndex,0)}</div>` : ''}
+        <div class="h-entry-body">
+          <span class="h-entry-date">${entry.date}</span>
+          <p class="h-entry-text">${esc(entry.content)}</p>
+        </div>
+        <button class="h-btn-delete" onclick="deleteEntry(event,${origIdx})">✕</button>
+      </div>`;
+    }).join('');
+  }
+
+  function toggleEntry(card) { card.classList.toggle('expanded'); }
+
+  function deleteEntry(e, idx) {
+    e.stopPropagation();
+    const entries = load(); entries.splice(idx,1); save(entries);
+    renderHistChart(entries);
+    renderHistList(entries, document.getElementById('histSearch').value.trim());
+    document.getElementById('hStatStreak').textContent = calcStreak();
+    document.getElementById('hStatTotal').textContent  = entries.length;
+  }
+
+  document.getElementById('histSearch').addEventListener('input', function() {
+    renderHistList(load(), this.value.trim());
+  });
+
+  /* ══ EVENTS ══ */
+  document.getElementById('btnLogin').addEventListener('click', () => {
+    const id = document.getElementById('loginId').value.trim();
+    const pw = document.getElementById('loginPw').value;
+    const err = login(id, pw);
+    document.getElementById('loginErr').textContent = err || '';
+    if (!err) afterLogin();
+  });
+
+  document.getElementById('btnSignup').addEventListener('click', () => {
+    const name = document.getElementById('signupName').value.trim();
+    const id   = document.getElementById('signupId').value.trim();
+    const pw   = document.getElementById('signupPw').value;
+    const err  = register(name, id, pw);
+    document.getElementById('signupErr').textContent = err || '';
+    if (!err && !login(id, pw)) afterLogin();
+  });
+
+  ['loginId','loginPw'].forEach(id => {
+    document.getElementById(id).addEventListener('keydown', e => { if (e.key==='Enter') document.getElementById('btnLogin').click(); });
+  });
+  ['signupName','signupId','signupPw'].forEach(id => {
+    document.getElementById(id).addEventListener('keydown', e => { if (e.key==='Enter') document.getElementById('btnSignup').click(); });
+  });
+
+  document.getElementById('btnLogout').addEventListener('click', logout);
+
+  document.getElementById('btnNewEntry').addEventListener('click', () => {
+    selectedDate = new Date().toISOString().split('T')[0];
+    initMoodScreen(); showScreen('emotion');
+  });
+
+  document.getElementById('calPrev').addEventListener('click', () => {
+    calMonth--; if (calMonth<0){calMonth=11;calYear--;} renderCalendar();
+  });
+  document.getElementById('calNext').addEventListener('click', () => {
+    calMonth++; if (calMonth>11){calMonth=0;calYear++;} renderCalendar();
+  });
+
+  document.getElementById('btnBackFromEmotion').addEventListener('click', goBack);
+  document.getElementById('btnBackFromWrite').addEventListener('click', goBack);
+  document.getElementById('btnBackFromHistory').addEventListener('click', goBack);
+  document.getElementById('btnGoCal').addEventListener('click', goCalendar);
+  document.getElementById('btnOpenHistory').addEventListener('click', openHistory);
+  document.getElementById('btnSkipEmotion').addEventListener('click', () => { selectedMoodIndex = null; goToWrite(); });
+
+  /* ══ INIT ══ */
+  checkSession();
+</script>
+</body>
+</html>
